@@ -53,6 +53,9 @@ p { margin: 0; }
 .progress { color: var(--leaf-deep); font-weight: 800; }
 .demo-flag { align-self: flex-start; background: var(--sun); color: var(--ink); font-size: .75rem; font-weight: 800; padding: .15rem .7rem; border-radius: 1rem; }
 
+/* APP 內建瀏覽器提示 */
+.inapp { background: #FFF4DA; border: 3px solid var(--sun); border-radius: 20px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
+
 /* 小夥伴問候卡：整個 APP 的情感中心 */
 .hero-card {
   position: relative; display: flex; gap: .9rem; align-items: center;

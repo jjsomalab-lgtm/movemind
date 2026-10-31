@@ -1,30 +1,66 @@
 // 語音朗讀（臺灣華語）與語音輸入
+// 手機注意事項：
+// 1. iPhone／部分 Android 必須「使用者先點過畫面」才允許發聲 → 第一次點擊時先解鎖
+// 2. Chrome（Android）在 cancel() 後立刻 speak() 常常沒聲音 → 稍微延遲再說
+// 3. 語音清單在手機上是延遲載入 → 等 voiceschanged 再選臺灣華語
 import { get } from './store.js';
 
-let voice = null;
+const ok = 'speechSynthesis' in window;
+let voice = null, unlocked = false, timer = 0;
+
 function pickVoice() {
-  if (!('speechSynthesis' in window)) return;
+  if (!ok) return;
   const vs = speechSynthesis.getVoices();
-  voice = vs.find(v => v.lang === 'zh-TW') || vs.find(v => v.lang.startsWith('zh')) || null;
-}
-if ('speechSynthesis' in window) {
-  pickVoice();
-  speechSynthesis.onvoiceschanged = pickVoice;
+  voice = vs.find(v => v.lang === 'zh-TW') || vs.find(v => /zh[-_]TW|Taiwan/i.test(v.lang + v.name))
+    || vs.find(v => v.lang.startsWith('zh')) || null;
 }
 
+if (ok) {
+  pickVoice();
+  speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
+  // 第一次點擊畫面時，用一段無聲的語音「解鎖」手機的發聲權限
+  const unlock = () => {
+    if (unlocked) return;
+    unlocked = true;
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0; u.lang = 'zh-TW';
+      speechSynthesis.speak(u);
+    } catch (e) { /* 忽略 */ }
+  };
+  document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+  document.addEventListener('touchstart', unlock, { once: true, capture: true });
+}
+
+export const canSpeak = 'speechSynthesis' in window;
+
 export function speak(text, { force = false } = {}) {
-  if (!('speechSynthesis' in window)) return;
+  if (!ok || !text) return;
   if (!force && !get().profile.voice) return;
-  speechSynthesis.cancel();
+  clearTimeout(timer);
+  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+  if (!voice) pickVoice();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'zh-TW';
   if (voice) u.voice = voice;
   u.rate = 0.9; // 稍慢，長輩比較聽得清楚
-  speechSynthesis.speak(u);
+  u.volume = 1;
+  timer = setTimeout(() => { speechSynthesis.resume(); speechSynthesis.speak(u); }, 80);
 }
 
 export function stopSpeaking() {
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  clearTimeout(timer);
+  if (ok) speechSynthesis.cancel();
+}
+
+// 給「設定 → 測試聲音」顯示的檢查結果
+export function voiceStatus() {
+  if (!ok) return '這個瀏覽器不支援語音朗讀。請改用手機內建的 Safari 或 Chrome 開啟（不要用 LINE 內建瀏覽器）。';
+  pickVoice();
+  const n = speechSynthesis.getVoices().length;
+  if (!n) return '還沒載入語音，請再按一次「測試聲音」。如果一直沒有，請確認手機的「文字轉語音」設定。';
+  if (!voice) return `找不到中文語音（共有 ${n} 種語音）。請到手機設定下載「中文（臺灣）」語音。`;
+  return `使用語音：${voice.name}（${voice.lang}）。如果還是沒聲音，請檢查音量與靜音開關。`;
 }
 
 const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;

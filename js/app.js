@@ -2,7 +2,7 @@
 import * as S from './store.js';
 import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion } from './garden.js';
-import { speak, stopSpeaking, canListen, listenOnce } from './speech.js';
+import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak } from './speech.js';
 import { createWalk, getPosition } from './walk.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare } from './share.js';
 
@@ -46,8 +46,22 @@ function nav(active) {
     `<button data-go="${id}" class="${active === id ? 'on' : ''}" ${active === id ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></button>`).join('')}</nav>`;
 }
 
+// LINE、Facebook 等 APP 內建瀏覽器：常不支援語音朗讀，鏡頭與定位也較不穩，紀錄也和手機瀏覽器分開
+const UA = navigator.userAgent;
+const IN_LINE = /\bLine\//i.test(UA);
+const IN_APP = IN_LINE || /FBAN|FBAV|Instagram/i.test(UA);
+function inAppBanner() {
+  if (!IN_APP) return '';
+  const ext = `${location.origin}${location.pathname}?openExternalBrowser=1${location.hash}`;
+  return `<div class="inapp">
+    <p><b>建議改用手機瀏覽器開啟</b><br>在 ${IN_LINE ? 'LINE' : '這個 APP'} 裡面打開，可能沒有聲音、鏡頭和定位也比較不穩。</p>
+    ${IN_LINE ? `<a class="btn primary" href="${ext}">用瀏覽器開啟</a>` : '<p class="note">請按右上角選單，選「用瀏覽器開啟」。</p>'}
+  </div>`;
+}
+
 function page(title, body, { tab = null, back = null } = {}) {
-  main().innerHTML = header(title, { back }) + `<section class="body">${body}</section>` + (tab ? nav(tab) : '');
+  const banner = ['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '';
+  main().innerHTML = header(title, { back }) + `<section class="body">${banner}${body}</section>` + (tab ? nav(tab) : '');
   main().querySelector('.body').scrollTop = 0;
   window.scrollTo(0, 0);
 }
@@ -56,6 +70,7 @@ const sayBtn = text => `<button class="say" data-say="${esc(text)}" aria-label="
 
 // ---------- 路由 ----------
 const screens = {};
+let currentScreen = '';
 export function go(name, ...args) {
   // 散步記錄中：只允許打開「不舒服」頁或回到散步畫面，其他頁面先確認是否結束
   if (run.walk && !['walking', 'walk', 'help'].includes(name)) {
@@ -63,6 +78,7 @@ export function go(name, ...args) {
     return stopWalk();
   }
   cleanup(name);
+  currentScreen = screens[name] ? name : 'today';
   (screens[name] || screens.today)(...args);
   if (['today', 'activities', 'walk', 'garden', 'week'].includes(name)) history.replaceState(null, '', '#' + name);
 }
@@ -713,6 +729,8 @@ screens.settings = () => {
     <h2>字的大小</h2>
     <div class="answer-row">${[[1, '標準'], [1.15, '大'], [1.3, '特大']].map(([v, l]) => `<button class="btn choice ${p.fontScale === v ? 'on' : ''}" data-font="${v}">${l}</button>`).join('')}</div>
     <label class="switch"><input type="checkbox" data-act="toggleVoice" ${p.voice ? 'checked' : ''}><span>語音朗讀</span></label>
+    <button class="btn ghost" data-act="testVoice">測試聲音</button>
+    <p id="voiceMsg" class="note"></p>
     <h2>家人聯絡電話</h2>
     ${p.contacts.map((c, i) => `<div class="contact-row"><span>${esc(c.name)}　${esc(c.phone)}</span><button class="btn small" data-delcontact="${i}">刪除</button></div>`).join('')}
     ${p.contacts.length < 3 ? `<label class="field">稱呼<input id="cname" type="text" maxlength="12"></label>
@@ -781,6 +799,7 @@ const actions = {
   chatVoice: async () => { const t = await listenOnce(); if (t) sendChat(t); },
   helpLine: () => sendHelp('line'),
   helpSms: () => sendHelp('sms'),
+  testVoice: () => { speak('你好，我是心動小夥伴，聽得到我的聲音嗎？', { force: true }); $('#voiceMsg').textContent = voiceStatus(); },
   toggleVoice: e => { S.get().profile.voice = e.target.checked; S.save(); },
   addContact: () => { readContact(); S.save(); screens.settings(); },
   saveSettings: () => { S.get().profile.name = $('#sname').value.trim(); readContact(); S.save(); go('today'); },
