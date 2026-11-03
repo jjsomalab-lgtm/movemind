@@ -1,7 +1,10 @@
 // 戶外散步：GPS 記錄距離、時間與路線；地圖使用 OpenStreetMap（Leaflet）
 // 網頁 APP 限制：螢幕需保持亮著才能持續記錄（已使用 Wake Lock 防止自動關螢幕）
 
-import { DEMO_ROUTE } from './content.js';
+import { DEMO_ROUTE, FLOWER_EVERY_M } from './content.js';
+
+const FLOWER_COLORS = ['#F2A93B', '#D63A86', '#FFFFFF', '#D9482B', '#F3A6C0'];
+const flowerHTML = c => `<svg viewBox="0 0 20 20" width="20" height="20"><g fill="${c}" stroke="#7A5634" stroke-width=".6"><circle cx="10" cy="4.5" r="4"/><circle cx="15.5" cy="9" r="4"/><circle cx="13" cy="15" r="4"/><circle cx="7" cy="15" r="4"/><circle cx="4.5" cy="9" r="4"/></g><circle cx="10" cy="10.5" r="3" fill="#F6C453"/></svg>`;
 
 const R = 6371000;
 export function meters(a, b) {
@@ -13,6 +16,7 @@ export function meters(a, b) {
 
 export function createWalk(mapEl, { onUpdate, onError }) {
   let demo = false;
+  let flowers = [];
   let pts = [], dist = 0, start = 0, watchId = null, simTimer = null, lock = null, map = null, line = null, dot = null, tick = null;
   const hasLeaflet = !!window.L;
 
@@ -23,8 +27,12 @@ export function createWalk(mapEl, { onUpdate, onError }) {
       line = L.polyline([], { color: '#2F7D57', weight: 7 }).addTo(map);
       dot = L.circleMarker(center, { radius: 10, color: '#fff', weight: 3, fillColor: '#C2391B', fillOpacity: 1 }).addTo(map);
     } else {
-      mapEl.innerHTML = '<svg class="route-fallback" viewBox="0 0 300 200" aria-label="散步路線"><polyline fill="none" stroke="#2F7D57" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" points=""/><circle r="8" fill="#C2391B" stroke="#fff" stroke-width="3" cx="-20" cy="-20"/></svg><p class="map-note">地圖需要網路，目前先畫出路線形狀。</p>';
+      mapEl.innerHTML = '<svg class="route-fallback" viewBox="0 0 300 200" aria-label="散步路線"><polyline fill="none" stroke="#2F7D57" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" points=""/><g class="fl"></g><circle class="me" r="8" fill="#C2391B" stroke="#fff" stroke-width="3" cx="-20" cy="-20"/></svg><p class="map-note">地圖需要網路，目前先畫出路線形狀。</p>';
     }
+  }
+
+  function drawFlower(f) {
+    if (hasLeaflet && map) L.marker(f.p, { icon: L.divIcon({ html: flowerHTML(f.c), className: 'trail-flower', iconSize: [20, 20] }), interactive: false }).addTo(map);
   }
 
   function drawFallback() {
@@ -33,8 +41,9 @@ export function createWalk(mapEl, { onUpdate, onError }) {
     const [a, b, c, d] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
     const sx = v => 20 + (d - c ? (v - c) / (d - c) : 0.5) * 260, sy = v => 180 - (b - a ? (v - a) / (b - a) : 0.5) * 160;
     svg.querySelector('polyline').setAttribute('points', pts.map(p => `${sx(p[1])},${sy(p[0])}`).join(' '));
-    const last = pts[pts.length - 1], dotEl = svg.querySelector('circle');
+    const last = pts[pts.length - 1], dotEl = svg.querySelector('circle.me');
     dotEl.setAttribute('cx', sx(last[1])); dotEl.setAttribute('cy', sy(last[0]));
+    svg.querySelector('g.fl').innerHTML = flowers.map(f => `<circle cx="${sx(f.p[1])}" cy="${sy(f.p[0])}" r="6" fill="${f.c}" stroke="#7A5634" stroke-width="1.5"/>`).join('');
   }
 
   function add(p) {
@@ -46,6 +55,8 @@ export function createWalk(mapEl, { onUpdate, onError }) {
       dist += m;
     }
     pts.push(p);
+    // 花徑：每走 40 公尺，路邊開一朵花
+    if (Math.floor(dist / FLOWER_EVERY_M) > flowers.length) { flowers.push({ p, c: FLOWER_COLORS[flowers.length % FLOWER_COLORS.length] }); drawFlower(flowers[flowers.length - 1]); }
     if (hasLeaflet) { line.addLatLng(p); dot.setLatLng(p); map.panTo(p); } else drawFallback();
     emit();
   }
@@ -84,7 +95,7 @@ export function createWalk(mapEl, { onUpdate, onError }) {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       clearInterval(simTimer); clearInterval(tick);
       lock?.release?.();
-      const out = { km: Math.round(dist / 10) / 100, minutes: Math.max(1, Math.round(elapsed() / 60)), route: pts.slice() };
+      const out = { flowers: flowers.length, km: Math.round(dist / 10) / 100, minutes: Math.max(1, Math.round(elapsed() / 60)), route: pts.slice() };
       if (map) { map.remove(); map = null; }
       return out;
     },
@@ -95,7 +106,7 @@ export function createWalk(mapEl, { onUpdate, onError }) {
       mapEl = el;
       if (!pts.length) return;
       initMap(pts[pts.length - 1]);
-      if (hasLeaflet) { line.setLatLngs(pts); dot.setLatLng(pts[pts.length - 1]); map.fitBounds(line.getBounds(), { maxZoom: 17 }); } else drawFallback();
+      if (hasLeaflet) { line.setLatLngs(pts); dot.setLatLng(pts[pts.length - 1]); flowers.forEach(drawFlower); map.fitBounds(line.getBounds(), { maxZoom: 17 }); } else drawFallback();
       emit();
     },
   };

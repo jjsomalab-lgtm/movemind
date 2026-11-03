@@ -5,56 +5,55 @@
 // easier：做不到或不舒服時的「退階」做法
 export const ACTIVITIES = [
   {
-    id: 'seated-knee', name: '坐姿抬腿', level: 'seated', minutes: 4, reps: 10, repsNote: '左右腳合計', pose: true,
-    goal: '強化大腿前側，起身和走路更穩',
+    id: 'seated-knee', name: '坐姿抬腿', level: 'seated', minutes: 4, reps: 10, repsNote: '左右腳合計', pose: true,     goal: '強化大腿前側，起身和走路更穩',
     cues: ['坐在穩固椅子的前半段，背挺直，雙手扶著椅子兩側。', '慢慢把一隻腳往前抬，抬到舒服的高度，停一下。', '再慢慢放下，換另一隻腳。記得呼吸，不要憋氣。'],
     caution: '膝蓋會痛的話，抬低一點就好，不用伸直，一樣算完成。',
     easier: '只把腳跟輕輕滑向前方，不抬離地面。',
   },
   {
-    id: 'seated-march', name: '坐姿踏步', level: 'seated', minutes: 3, reps: 20, repsNote: '左右腳合計',
+    id: 'seated-march', name: '坐姿踏步', level: 'seated', minutes: 3, reps: 20, repsNote: '左右腳合計', pose: true,
     goal: '暖身，讓腿部循環變好',
     cues: ['坐穩，雙手放在大腿上。', '左右腳輪流抬起，像在原地走路。', '保持呼吸，不要憋氣。'],
     caution: '節奏自己決定，累了就停下來休息。',
     easier: '腳跟不離地，只抬起腳尖輪流踏。',
   },
   {
-    id: 'arm-circle', name: '手臂畫圈', level: 'seated', minutes: 3, reps: 10, repsNote: '前後各 5 圈',
+    id: 'arm-circle', name: '手臂畫圈', level: 'seated', minutes: 3, reps: 10, repsNote: '前後各 5 圈', pose: true,
     goal: '放鬆肩膀，活動上半身',
     cues: ['坐穩，雙手往兩側打開，和肩膀差不多高。', '手臂慢慢往前畫小圈圈。', '再換方向往後畫。記得呼吸，不要憋氣。'],
     caution: '肩膀會痛的話，手放低一點，圈畫小一點。',
     easier: '雙手放在肩膀上，只用手肘畫圈。',
   },
   {
-    id: 'seated-twist', name: '坐姿轉身', level: 'seated', minutes: 3, reps: 6, repsNote: '左右合計',
+    id: 'seated-twist', name: '坐姿轉身', level: 'seated', minutes: 3, reps: 6, repsNote: '左右合計', pose: true,
     goal: '放鬆腰背，轉身更輕鬆',
     cues: ['坐直，雙手交叉放在胸前。', '身體慢慢轉向右邊，停兩秒。', '回到中間，再轉向左邊。記得呼吸。'],
     caution: '轉到舒服的角度就好，腰會痛就停止。',
     easier: '只轉頭和肩膀，腰不用轉。',
   },
   {
-    id: 'ankle-pump', name: '腳踝上下動', level: 'seated', minutes: 2, reps: 15, repsNote: '一上一下算 1 下',
+    id: 'ankle-pump', name: '腳踝上下動', level: 'seated', minutes: 2, reps: 15, repsNote: '一上一下算 1 下', pose: true,
     goal: '促進小腿循環，久坐後特別適合',
     cues: ['坐著，雙腳平放在地上。', '腳尖往上翹，腳跟踩地。', '再換腳跟抬起，腳尖踩地。'],
     caution: '小腿抽筋時先停下來，慢慢把腳尖往身體方向拉，輕輕伸展。疼痛或腫脹一直沒有改善，請就醫。',
     easier: '一次只動一隻腳，動作放慢。',
   },
   {
-    id: 'sit-to-stand', name: '扶椅起立', level: 'standing', minutes: 4, reps: 8, repsNote: '站起再坐下算 1 下',
+    id: 'sit-to-stand', name: '扶椅起立', level: 'standing', minutes: 4, reps: 8, repsNote: '站起再坐下算 1 下', pose: true,
     goal: '練習起身的力氣，生活更方便',
     cues: ['坐在靠牆、不會滑動的穩固椅子上，前面放一張桌子可以扶。', '身體微微往前，一邊吐氣一邊用雙腳站起來。', '慢慢坐回去，屁股輕輕碰到椅子。'],
     caution: '頭暈時先扶穩，再慢慢坐下休息。膝蓋痛就停止。',
     easier: '坐高一點的椅子，或用手撐著扶手起身。',
   },
   {
-    id: 'heel-raise', name: '扶椅踮腳', level: 'standing', minutes: 3, reps: 10, repsNote: '踮起再放下算 1 下',
+    id: 'heel-raise', name: '扶椅踮腳', level: 'standing', minutes: 3, reps: 10, repsNote: '踮起再放下算 1 下', pose: true,
     goal: '強化小腿，走路更有力',
     cues: ['站在靠牆、不會滑動的椅子後面，雙手扶好椅背。', '腳跟慢慢抬起，用腳尖站著。', '再慢慢放下。記得呼吸，不要憋氣。'],
     caution: '全程扶著椅背，不要放手。頭暈時先扶穩，再坐下休息。',
     easier: '腳跟只抬起一點點，或改做坐姿的腳踝上下動。',
   },
   {
-    id: 'stand-march', name: '扶椅原地踏步', level: 'standing', minutes: 3, reps: 20, repsNote: '左右腳合計',
+    id: 'stand-march', name: '扶椅原地踏步', level: 'standing', minutes: 3, reps: 20, repsNote: '左右腳合計', pose: true,
     goal: '練習平衡，為出門散步做準備',
     cues: ['站在靠牆、不會滑動的椅子後面，雙手扶好。', '左右腳輪流抬起，像原地走路。', '抬到舒服的高度就好。'],
     caution: '全程扶著椅背。覺得身體晃，先坐下休息，再改做坐姿踏步。',
@@ -136,6 +135,15 @@ export const COMMUNITY_GOAL_KM = 10;  // 社區合作任務：大家一起走 10
 
 export const EMERGENCY = { medical: '119', mental: '1925' };
 
+// LINE 官方帳號的 ID（在 LINE Official Account Manager 首頁可看到，例如 @123abcde）
+// 填好之後，APP 裡的「到 LINE 聊」按鈕會直接打開官方帳號的聊天室，並自動帶入文字
+export const LINE_OA_ID = '@615drddf';
+// 網頁聊天的 AI 大腦：n8n「網頁聊天」工作流程的 Webhook Production URL（見 line/LINE整合說明.md 第八節）
+// 留空時，APP 內聊天使用預先設計的回應（展示模式）
+export const AI_CHAT_URL = '';
+export const aiReady = () => /^https:\/\//.test(AI_CHAT_URL);
+export const lineReady = () => /^@[0-9a-z._-]+$/i.test(LINE_OA_ID);
+
 // 活動後心情（行為活化：讓長輩看見「動一動」和「心情」的關聯）
 export const AFTER_MOODS = [
   { id: 'better', face: '😊', label: '比較好', reply: '太好了！你看，動一動心情真的會不一樣。' },
@@ -160,3 +168,17 @@ export const DEMO_ROUTE = [
   [22.6478, 120.3120], [22.6472, 120.3118], [22.6467, 120.3113], [22.6464, 120.3106],
   [22.6464, 120.3099], [22.6466, 120.3093],
 ];
+
+// ---------- 葉靈：散步時遇到的原創小精靈（以臺灣常見植物為靈感，原創設計） ----------
+// walk：散步時依序遇到；checkin：打卡時遇到（第 1 次木棉、第 2 次荷花）
+export const SPIRITS = [
+  { id: 'jasmine', name: '茉莉小白', from: 'walk', petal: '#FFFFFF', edge: '#CFD8C8', n: 5, shape: 'round', line: '喜歡陪人慢慢散步，走累了就一起休息。' },
+  { id: 'osmanthus', name: '桂花金金', from: 'walk', petal: '#F2A93B', edge: '#D9861A', n: 12, shape: 'dot', line: '身上香香的，聞到它就會想笑。' },
+  { id: 'bougainvillea', name: '九重葛紫紫', from: 'walk', petal: '#D63A86', edge: '#A8256A', n: 3, shape: 'bract', line: '住在巷口的牆上，最喜歡跟鄰居打招呼。' },
+  { id: 'magnolia', name: '玉蘭香香', from: 'walk', petal: '#FBF3DC', edge: '#E3D4A6', n: 6, shape: 'long', line: '很會等待，總是在路口等你經過。' },
+  { id: 'tung', name: '油桐雪雪', from: 'walk', petal: '#FFFFFF', edge: '#E7B7C0', n: 5, shape: 'heart', line: '輕輕飄下來的小白花，看到它代表今天走得很遠。' },
+  { id: 'kapok', name: '木棉紅紅', from: 'checkin', petal: '#D9482B', edge: '#A83418', n: 5, shape: 'big', line: '高雄的市花精靈，在你第一次打卡的地方等你。' },
+  { id: 'lotus', name: '荷花粉粉', from: 'checkin', petal: '#F3A6C0', edge: '#D9708F', n: 8, shape: 'point', line: '從蓮池來的精靈，第二次打卡時會出現。' },
+];
+export const KM_PER_SPIRIT = 0.25; // 散步每 0.25 公里遇到一隻
+export const FLOWER_EVERY_M = 40;  // 散步路線每 40 公尺開一朵花

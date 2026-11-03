@@ -1,10 +1,11 @@
 // 心動力 AI｜主程式（畫面與流程）
 import * as S from './store.js';
 import * as C from './content.js';
-import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion } from './garden.js';
+import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
+import { demoSVG } from './demos.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak } from './speech.js';
 import { createWalk, getPosition } from './walk.js';
-import { lineURL, smsURL, weeklyText, helpText, nativeShare } from './share.js';
+import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
 
 const $ = sel => document.querySelector(sel);
 const main = () => $('#main');
@@ -32,10 +33,19 @@ const icon = (k, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-h
 // ---------- 共用版面 ----------
 function setFont() { document.documentElement.style.setProperty('--fs', S.get().profile.fontScale); }
 
+// 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
+const NO_LINE = ['welcome', 'setupWith', 'screening', 'screenResult', 'check', 'companion', 'help', 'stopToday'];
+function lineHeaderBtn() {
+  if (NO_LINE.includes(currentScreen)) return '';
+  if (!C.lineReady()) return `<button class="line-top" data-go="chat" aria-label="跟小夥伴聊聊">${icon('chat')}<span>聊聊</span></button>`;
+  return `<a class="line-top" href="${lineOaChatURL(C.LINE_OA_ID, lineOpener())}" target="_blank" rel="noopener" aria-label="打開 LINE 跟小夥伴聊聊">${icon('chat')}<span>LINE</span></a>`;
+}
+
 function header(title, { back = null } = {}) {
   return `<header class="top">
     ${back ? `<button class="icon-btn" data-go="${back}" aria-label="回上一頁">${icon('back')}</button>` : `<button class="icon-btn" data-go="settings" aria-label="設定">${icon('gear')}</button>`}
     <h1>${esc(title)}</h1>
+    ${lineHeaderBtn()}
     <button class="help-btn" data-act="help">不舒服</button>
   </header>`;
 }
@@ -61,7 +71,8 @@ function inAppBanner() {
 
 function page(title, body, { tab = null, back = null } = {}) {
   const banner = ['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '';
-  main().innerHTML = header(title, { back }) + `<section class="body">${banner}${body}</section>` + (tab ? nav(tab) : '');
+  const fab = '';
+  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${body}</section>` + fab + (tab ? nav(tab) : '');
   main().querySelector('.body').scrollTop = 0;
   window.scrollTo(0, 0);
 }
@@ -329,6 +340,7 @@ screens.player = id => {
   const a = C.ACTIVITIES.find(x => x.id === id);
   run.activity = a; run.reps = 0;
   page(a.name, `
+    <div class="demo-card">${demoSVG(a.id)}<p class="note">示範動畫（原創繪製），動作細節以下方口令為準</p></div>
     <div class="cue-card">
       <ol class="cues">${a.cues.map(c => `<li>${esc(c)}</li>`).join('')}</ol>
       ${sayBtn(a.cues.join(''))}
@@ -341,7 +353,7 @@ screens.player = id => {
       <p id="poseStatus" class="pose-status"></p>
     </div>
     <button class="btn huge primary" data-act="rep">完成一下</button>
-    ${a.pose ? '<button class="btn ghost" data-act="pose" id="poseBtn">開鏡頭幫我數</button>' : ''}
+    <button class="btn ghost" data-act="pose" id="poseBtn">開鏡頭幫我數</button>
     <button class="btn" data-act="finishActivity">做完了</button>
   `, { back: 'activities' });
   speak(`我們來做${a.name}。${a.cues.join('')}${a.caution}`);
@@ -364,10 +376,9 @@ async function togglePose() {
   box.hidden = false; btn.textContent = '關閉鏡頭';
   try {
     run.pose = true;
-    await pose.startPose($('#cam'), $('#overlay'), {
+    await pose.startPose($('#cam'), $('#overlay'), run.activity.id, {
       onRep: addRep,
       onStatus: m => { status.textContent = m; },
-      onAngle: a => { status.dataset.angle = a; },
     });
   } catch (e) {
     run.pose = false;
@@ -437,6 +448,7 @@ screens.reward = () => {
       <div class="garden-view">${gardenSVG({ highlight: r.grown })}</div>
       <p>${esc(r.detail)} ${esc(grownText)}</p>
     </div>
+    ${r.walk ? '<button class="btn line-btn" data-act="postcard">做一張散步明信片分享</button>' : ''}
     ${canPlant() ? '<button class="btn primary" data-go="garden">去種新的植物</button>' : ''}
     <button class="btn" data-go="today">回首頁</button>
   `);
@@ -459,6 +471,14 @@ screens.garden = () => {
     </div>
     ${picker}
     ${g.plots.length >= C.GARDEN_SLOTS ? '<p class="note">花園種滿了！之後的活動會繼續幫植物澆水。</p>' : ''}
+    <div class="panel">
+      <h2>葉靈圖鑑（${new Set((g.spirits || []).map(s => s.id)).size} / ${C.SPIRITS.length}）</h2>
+      <p class="note">出門散步、到公園或據點打卡，就會遇到以臺灣植物為靈感的葉靈。</p>
+      <div class="dex">${C.SPIRITS.map(sp => {
+        const got = (g.spirits || []).filter(s => s.id === sp.id);
+        return `<div class="dex-item ${got.length ? '' : 'unknown'}">${spiritSVG(sp.id, 72, { silhouette: !got.length })}<b>${got.length ? esc(sp.name) : '？？？'}</b><span>${got.length ? `見過 ${got.length} 次` : sp.from === 'checkin' ? '打卡時出現' : '散步時出現'}</span></div>`;
+      }).join('')}</div>
+    </div>
     <div class="panel">
       <h2>社區合作任務</h2>
       <p>據點的大家一起散步 ${C.COMMUNITY_GOAL_KM} 公里，就能一起種出一棵大樹。</p>
@@ -535,6 +555,7 @@ screens.walking = () => {
       <div><b id="wwater">0</b><span>次澆水</span></div>
     </div>
     <p id="walkMsg" class="note"></p>
+    <div id="encounter"></div>
     <div class="grid2">
       <button class="btn" data-act="shareLive">安心分享位置</button>
       <button class="btn" data-act="checkin">在這裡打卡</button>
@@ -548,6 +569,8 @@ screens.walking = () => {
       k.textContent = km.toFixed(2);
       $('#wtime').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
       $('#wwater').textContent = Math.floor(km / C.KM_PER_WATER);
+      const due = Math.floor(km / C.KM_PER_SPIRIT);
+      if (due > (run.walkInfo.met || 0)) { run.walkInfo.met = due; queueEncounter('walk'); }
       const half = Math.floor(km / 0.5);
       if (half > (run.walkInfo.spoken || 0)) { run.walkInfo.spoken = half; speak(`已經走了${(half * 0.5).toFixed(1)}公里，很棒！累了就找地方坐下休息。`); }
     },
@@ -568,8 +591,52 @@ function stopWalk() {
   const r = rewardWalk(out.km);
   const after = S.get().garden.plots.map(p => p.stage);
   const grown = after.findIndex((s, i) => s !== before[i]);
-  run.lastReward = { title: `散步 ${out.km.toFixed(2)} 公里，完成！`, detail: grown >= 0 ? `幫花園澆了 ${r.water} 次水。` : `存了 ${r.water} 次水，種新植物時會用上。`, grown };
+  const friends = (run.walkInfo.friends || []).map(id => C.SPIRITS.find(s => s.id === id)?.name).filter(Boolean);
+  run.lastWalk = { km: out.km, minutes: out.minutes, flowers: out.flowers, friends: run.walkInfo.friends || [], at: new Date().toISOString() };
+  run.encounter = null; run.encQueue = [];
+  run.lastReward = { walk: true, title: `散步 ${out.km.toFixed(2)} 公里，完成！`, detail: `路上開了 ${out.flowers} 朵花${friends.length ? `，認識了${friends.join('、')}` : ''}。${grown >= 0 ? `也幫花園澆了 ${r.water} 次水。` : `存了 ${r.water} 次水，種新植物時會用上。`}`, grown };
   go('afterMood');
+}
+
+// ---------- 遇到葉靈 ----------
+// 一次只出現一隻；同時遇到時排隊，打完招呼再出現下一隻
+function queueEncounter(from) {
+  if (run.encounter) { (run.encQueue = run.encQueue || []).push(from); return; }
+  showEncounter(from);
+}
+
+function showEncounter(from) {
+  const { spirit, isNew } = meetSpirit(from);
+  run.encounter = { spirit, isNew, taps: 0, from };
+  renderEncounter();
+  speak(`${isNew ? '遇到了新朋友' : '又見面了'}，${spirit.name}！輕輕點三下，跟它打招呼吧。`);
+}
+
+function renderEncounter() {
+  const el = $('#encounter'); const e = run.encounter;
+  if (!el) return;
+  if (!e) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="encounter">
+    <p class="lead">${e.isNew ? '遇到新的葉靈！' : '又見面了！'}</p>
+    <button class="spirit-btn" data-act="greet" aria-label="跟${esc(e.spirit.name)}打招呼">${spiritSVG(e.spirit.id, 130)}</button>
+    <p><b>${esc(e.spirit.name)}</b>：${esc(e.spirit.line)}</p>
+    <div class="taps">${[0, 1, 2].map(i => `<i class="${i < e.taps ? 'on' : ''}"></i>`).join('')}</div>
+    <p class="note">輕點葉靈三下打招呼，它就會加入你的圖鑑</p>
+  </div>`;
+}
+
+function greet() {
+  const e = run.encounter; if (!e) return;
+  e.taps += 1;
+  if (e.taps < 3) { renderEncounter(); speak(['你好！', '我們一起走走吧！'][e.taps - 1]); return; }
+  befriend(e.spirit.id, e.from === 'checkin' ? '打卡' : '散步');
+  run.walkInfo && (run.walkInfo.friends = [...(run.walkInfo.friends || []), e.spirit.id]);
+  const msg = `${e.spirit.name}${e.isNew ? '加入你的圖鑑了！' : '很開心又遇到你！'}`;
+  run.encounter = null; renderEncounter();
+  const m = $('#walkMsg'); if (m) m.textContent = msg;
+  speak(msg);
+  const next = (run.encQueue || []).shift();
+  if (next) setTimeout(() => showEncounter(next), 1500);
 }
 
 async function doCheckin() {
@@ -580,6 +647,7 @@ async function doCheckin() {
   const msg = r.unlockedKapok ? `打卡成功！解鎖了高雄市花「木棉花」，還得到 1 顆種子。` : `在「${name}」打卡成功，得到 1 顆種子！`;
   const el = $('#walkMsg'); if (el) el.textContent = msg;
   speak(msg);
+  setTimeout(() => queueEncounter('checkin'), 1800);
 }
 
 // ---------- 週回顧 ----------
@@ -644,40 +712,99 @@ function fofPanel() {
 // ---------- 聊天（展示模式） ----------
 screens.chat = () => {
   const msgs = S.get().chat;
+  const ai = C.aiReady();
+  const lineCard = C.lineReady() ? `<div class="line-card">
+      <p><b>${ai ? '也可以在 LINE 聊' : '到 LINE 跟小夥伴聊'}</b><br>${ai ? '在官方帳號聊天，是同一個小夥伴。' : '在官方帳號聊天，小夥伴會用 AI 回答你。'}</p>
+      <a class="btn line-btn" href="${lineOaChatURL(C.LINE_OA_ID, lineOpener())}" target="_blank" rel="noopener">打開 LINE 聊天</a>
+    </div>` : '';
   page('跟小夥伴聊聊', `
-    <p class="demo-flag">展示模式：回應為預先設計，決審版將串接 AI</p>
+    ${ai ? '' : lineCard}
+    <p class="demo-flag">${ai ? '小夥伴由 AI 回答，和 LINE 官方帳號是同一個小夥伴' : '展示模式：回應為預先設計'}</p>
     <div class="chat" id="chatLog">
       <div class="bubble bot">${esc(greeting())} 想聊什麼都可以，我在這裡。</div>
       ${msgs.map(m => `<div class="bubble ${m.who}">${esc(m.text)}</div>`).join('')}
     </div>
     <div class="chips">${C.CHAT_CHIPS.map(c => `<button class="chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <form class="chat-input" data-form="chat">
-      <input id="chatText" type="text" maxlength="80" placeholder="想說什麼呢？" aria-label="輸入訊息">
+      <input id="chatText" type="text" maxlength="120" placeholder="想說什麼呢？" aria-label="輸入訊息">
       ${canListen ? `<button type="button" class="icon-btn" data-act="chatVoice" aria-label="用說的">${icon('mic')}</button>` : ''}
       <button type="submit" class="btn send">送出</button>
     </form>
+    ${ai ? lineCard : ''}
+    ${ai ? '<p class="note">小夥伴是 AI，不是醫師或護理師，沒辦法診斷或開藥。請不要輸入身分證字號、病歷等個人資料。</p>' : ''}
   `, { back: 'today' });
   const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
 };
 
-function sendChat(text) {
-  text = text.trim(); if (!text) return;
+// 帶到 LINE 的第一句話：有今天的心情就一起帶過去，讓小夥伴接得上話
+function lineOpener() {
+  const m = S.get().today.mood && C.MOODS.find(x => x.id === S.get().today.mood);
+  return m ? `我想聊聊，今天心情${m.label}` : '我想聊聊';
+}
+
+function chatExtras(flag) {
+  const log = $('#chatLog'); if (!log) return;
+  if (flag === 'crisis') log.insertAdjacentHTML('beforeend', `<a class="btn danger" href="tel:${C.EMERGENCY.mental}">撥打 1925 安心專線</a><a class="btn" href="tel:${C.EMERGENCY.medical}">撥打 119</a>`);
+  if (flag === 'body') log.insertAdjacentHTML('beforeend', `<a class="btn danger" href="tel:${C.EMERGENCY.medical}">撥打 119</a>`);
+  if (flag === 'go') log.insertAdjacentHTML('beforeend', `<button class="btn primary" data-act="startActivity">開始活動前確認</button>`);
+  log.scrollTop = log.scrollHeight;
+}
+
+function pushChat(who, text) {
   const s = S.get();
-  const rule = C.CHAT_RULES.find(r => r.keys.some(k => text.includes(k)));
-  let reply = rule ? rule.reply : C.CHAT_DEFAULT;
-  // AI 是橋梁、不是替代：每聊 4 句，鼓勵和真實的人連結（危機與身體緊急回覆除外）
-  const mine = s.chat.filter(m => m.who === 'me').length + 1;
-  if (!rule?.crisis && !rule?.body && mine % 4 === 0) reply += '\n' + C.BRIDGE_LINES[(mine / 4) % C.BRIDGE_LINES.length];
-  s.chat.push({ who: 'me', text }, { who: 'bot', text: reply });
+  s.chat.push({ who, text });
   s.chat = s.chat.slice(-40);
   S.save();
+}
+
+let chatBusy = false;
+async function sendChat(text) {
+  text = text.trim(); if (!text || chatBusy) return;
+  const s = S.get();
+  const rule = C.CHAT_RULES.find(r => r.keys.some(k => text.includes(k)));
+  const flagOf = r => (r?.crisis ? 'crisis' : r?.body ? 'body' : r?.go ? 'go' : null);
+
+  // 1. 安全相關（自傷、身體緊急、怕跌倒）：一律在手機上直接用固定回覆，不送給 AI
+  const safety = rule && (rule.crisis || rule.body || rule.keys.includes('怕跌倒'));
+  // 2. 沒有設定 AI 大腦：使用預先設計的回應
+  if (safety || !C.aiReady()) {
+    let reply = rule ? rule.reply : C.CHAT_DEFAULT;
+    const mine = s.chat.filter(m => m.who === 'me').length + 1;
+    if (!safety && mine % 4 === 0) reply += '\n' + C.BRIDGE_LINES[(mine / 4) % C.BRIDGE_LINES.length];
+    pushChat('me', text); pushChat('bot', reply);
+    screens.chat(); speak(reply); chatExtras(flagOf(rule));
+    return;
+  }
+
+  // 3. 其他：交給 n8n 的 AI 大腦（和 LINE 官方帳號同一套規則）
+  pushChat('me', text);
   screens.chat();
-  speak(reply);
   const log = $('#chatLog');
-  if (rule?.crisis) log.insertAdjacentHTML('beforeend', `<a class="btn danger" href="tel:${C.EMERGENCY.mental}">撥打 1925 安心專線</a><a class="btn" href="tel:${C.EMERGENCY.medical}">撥打 119</a>`);
-  if (rule?.body) log.insertAdjacentHTML('beforeend', `<a class="btn danger" href="tel:${C.EMERGENCY.medical}">撥打 119</a>`);
-  if (rule?.go) log.insertAdjacentHTML('beforeend', `<button class="btn primary" data-act="startActivity">開始活動前確認</button>`);
+  log.insertAdjacentHTML('beforeend', '<div class="bubble bot typing" id="typing">小夥伴正在想…</div>');
   log.scrollTop = log.scrollHeight;
+  chatBusy = true;
+  let reply = '', flag = null;
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 15000);
+    const mood = s.today.mood && C.MOODS.find(m => m.id === s.today.mood);
+    const res = await fetch(C.AI_CHAT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
+      body: JSON.stringify({ sessionId: S.chatSession(), text: text.slice(0, 300), mood: mood ? mood.label : '', allowed: s.today.allowed || '' }),
+    });
+    clearTimeout(t);
+    const data = await res.json();
+    reply = String(data.reply || '').trim();
+    flag = data.flag || null;
+  } catch (e) { reply = ''; }
+  chatBusy = false;
+  if (!reply) { // 連線失敗：退回預先設計的回應，展示不會中斷
+    reply = (rule ? rule.reply : C.CHAT_DEFAULT);
+    flag = flagOf(rule);
+  }
+  pushChat('bot', reply);
+  if (currentScreen !== 'chat') return;
+  screens.chat(); speak(reply); chatExtras(flag);
 }
 
 // ---------- 不舒服 / 求助 ----------
@@ -759,7 +886,53 @@ function readContact() {
 }
 
 // ---------- 事件 ----------
+// ---------- 散步明信片（分享給家人） ----------
+async function makePostcard() {
+  const w = run.lastWalk; if (!w) return;
+  const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  const grad = x.createLinearGradient(0, 0, 0, H); grad.addColorStop(0, '#CFE8F2'); grad.addColorStop(.55, '#EAF4E4'); grad.addColorStop(1, '#B8D99A');
+  x.fillStyle = grad; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#F6C453'; x.beginPath(); x.arc(900, 170, 80, 0, Math.PI * 2); x.fill();
+  const font = (s, wgt = 800) => `${wgt} ${s}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`;
+  x.fillStyle = '#1D2B24'; x.font = font(64); x.fillText('今天的散步明信片', 80, 200);
+  x.font = font(40, 500); const d = new Date(w.at); x.fillText(`${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}　${S.get().profile.name || ''}`, 80, 270);
+  x.fillStyle = '#215C40'; x.font = font(150); x.fillText(`${w.km.toFixed(2)}`, 80, 470);
+  const kmW = x.measureText(`${w.km.toFixed(2)}`).width; x.font = font(54); x.fillText('公里', 100 + kmW, 470);
+  x.fillStyle = '#1D2B24'; x.font = font(44, 600); x.fillText(`走了 ${w.minutes} 分鐘・路上開了 ${w.flowers} 朵花`, 80, 560);
+  const ids = (w.friends.length ? w.friends : ['jasmine']).slice(0, 3);
+  for (let i = 0; i < ids.length; i++) {
+    const svg = spiritSVG(ids[i], 300).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+    const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    await img.decode().catch(() => {});
+    x.drawImage(img, 80 + i * 320, 650, 300, 336);
+  }
+  x.font = font(40, 600); x.fillText(w.friends.length ? `今天遇到：${w.friends.map(id => C.SPIRITS.find(s => s.id === id)?.name).join('、')}` : '下次散步，說不定會遇到葉靈喔！', 80, 1080);
+  x.fillStyle = '#2F7D57'; x.font = font(46); x.fillText('心動力 AI｜讓運動從心開始', 80, 1240);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const file = new File([blob], '心動力散步明信片.png', { type: 'image/png' });
+  const text = `我今天散步了 ${w.km.toFixed(2)} 公里，路上開了 ${w.flowers} 朵花！🌸`;
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text }); return; } catch (e) { /* 使用者取消 */ return; }
+  }
+  const url = URL.createObjectURL(blob);
+  run.postcardURL = url;
+  go('postcard');
+}
+
+screens.postcard = () => {
+  const w = run.lastWalk;
+  page('散步明信片', `
+    <img class="postcard" src="${run.postcardURL}" alt="散步明信片">
+    <p class="note">長按圖片可以儲存，再用 LINE 傳給家人。</p>
+    <a class="btn line-btn" href="${lineURL(`我今天散步了 ${w.km.toFixed(2)} 公里，路上開了 ${w.flowers} 朵花！🌸`)}" target="_blank" rel="noopener">用 LINE 分享文字</a>
+    <button class="btn" data-go="today">回首頁</button>
+  `, { back: 'today' });
+};
+
 const actions = {
+  postcard: makePostcard,
+  greet,
   help: () => go('help'),
   demo: () => { S.loadDemo(); setFont(); go('today'); },
   startScreening: () => { S.get().profile.name = $('#name').value.trim(); S.save(); go('setupWith'); },

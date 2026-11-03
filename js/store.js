@@ -16,8 +16,9 @@ const blank = () => ({
   sessions: [],            // { id, at, type:'home'|'walk', activityId, name, reps, minutes, km, route? }
   moods: [],               // { at, mood }
   fof: [],                 // 跌倒擔心度 { at, score }（0–10）
-  garden: { seeds: 1, water: 0, plots: [{ type: 'jasmine', stage: 0 }], unlocked: ['jasmine', 'osmanthus', 'magnolia', 'bougainvillea'], checkins: [], communityKm: 3.2 },
+  garden: { seeds: 1, water: 0, plots: [{ type: 'jasmine', stage: 0 }], unlocked: ['jasmine', 'osmanthus', 'magnolia', 'bougainvillea'], checkins: [], communityKm: 3.2, spirits: [] },
   chat: [],
+  chatSession: '',         // 網頁聊天的對話代碼（讓 AI 記得前幾句），不含個人資料
   demo: false,
 });
 
@@ -138,7 +139,16 @@ export function loadDemo() {
     ],
     unlocked: ['jasmine', 'osmanthus', 'magnolia', 'bougainvillea'],
     checkins: [], communityKm: 6.4,
+    spirits: [
+      { id: 'jasmine', at: new Date(Date.now() - 5 * 864e5).toISOString(), where: '散步' },
+      { id: 'osmanthus', at: new Date(Date.now() - 2 * 864e5).toISOString(), where: '散步' },
+    ],
   };
   state.demo = true;
   save();
+}
+
+export function chatSession() {
+  if (!state.chatSession) { state.chatSession = 'web-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); save(); }
+  return state.chatSession;
 }

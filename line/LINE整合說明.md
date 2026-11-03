@@ -79,6 +79,15 @@
 
 為了確認請求真的來自 LINE，可在 Webhook 節點開啟「Raw Body」，再加一個 **Crypto** 節點：Action 選 Hmac、Type 選 SHA256、Encoding 選 Base64、Secret 填 Channel secret，對原始內容計算後與標頭 `x-line-signature` 比對，不一致就停止。初審展示前可以先略過，決審前補上。
 
+### 步驟 6：讓 APP 的「聊聊」按鈕連到 LINE
+
+1. 在 LINE Official Account Manager 首頁找到官方帳號的 **ID**（@ 開頭，例如 `@123abcde`）。
+2. 打開 `js/content.js`，搜尋 `LINE_OA_ID`，把 `'@你的官方帳號ID'` 改成你的 ID（保留單引號），存檔後上傳 GitHub。
+3. APP 每一頁右下角的「聊聊」按鈕 → 聊天頁最上方會出現「打開 LINE 聊天」。點下去會打開官方帳號的聊天室，並自動帶入第一句話：
+   - 今天有選心情：`我想聊聊，今天心情有點累`（交給 AI，小夥伴會接著聊心情）
+   - 沒有選心情：`我想聊聊`（觸發固定的歡迎回覆）
+4. 長輩只要按「傳送」即可。若還沒加入官方帳號好友，LINE 會先顯示加好友頁面。
+
 ## 四、隱私設定（重要）
 
 - n8n 工作流程「Settings」→「Save successful production executions」改為 **Do not save**，避免伺服器保存長輩的對話內容。
@@ -114,3 +123,57 @@
 - 改用 **LIFF**：在 LINE 裡直接開 APP 並取得 LINE 身分，紀錄就能和 LINE 帳號綁定（對應 SPEC 第 8 節的 LINE 登入）。
 - 家人也加入官方帳號，由長輩授權後收到週報。主動推播會計入訊息則數，需留意方案額度。
 - n8n 的固定規則與 APP 的 `js/content.js` 要同步維護；之後可把關鍵字改成共用的 JSON 檔。
+
+## 八、APP 內聊天也接上同一個 AI 大腦（網頁聊天工作流程）
+
+讓 APP 裡「跟小夥伴聊聊」也由 AI 回答，和 LINE 官方帳號用同一套規則與提示詞。AI 金鑰只存在 n8n，不會出現在 APP 程式裡。
+
+```
+APP 聊天頁 ──(1) 手機端先擋安全關鍵字（固定回覆）
+           └─(2) 其他訊息 → n8n Webhook → 安全分流 → AI Agent → 回覆檢查 → 回傳 APP
+                                         （連線失敗時，APP 自動改用預先設計的回應）
+```
+
+### 在 n8n 新增一個工作流程「心動力 網頁聊天」，依序 6 個節點
+
+| # | 節點 | 設定重點 |
+|---|---|---|
+| 1 | **Webhook** | Method：POST；Path：`movemind-chat`；Respond：**Using 'Respond to Webhook' Node**；Options → **Allowed Origins (CORS)** 填 `https://jjsomalab-lgtm.github.io` |
+| 2 | **Code**（安全分流） | Run Once for Each Item；貼上 `n8n_web_1_安全分流.js` |
+| 3 | **If** | 條件：`{{ $json.route }}` 等於 `ai`；False 分支直接連到第 6 個節點 |
+| 4 | **AI Agent** | Prompt 選 Define below，內容 `{{ $json.chatInput }}`；System Message 貼上 `AI系統提示詞.md`（與 LINE 版相同）；Memory 用 Window Buffer Memory，Session Key `{{ $json.sessionId }}`，長度 6 |
+| 5 | **Code**（AI 回覆檢查） | Run Once for Each Item；貼上 `n8n_web_2_AI回覆檢查.js` |
+| 6 | **Respond to Webhook** | Respond With：JSON；Response Body：`{{ { reply: $json.reply, flag: $json.flag } }}` |
+
+### 接到 APP
+
+1. 啟用（Activate）工作流程，複製 Webhook 節點的 **Production URL**。
+2. 打開 `js/content.js`，搜尋 `AI_CHAT_URL`，把 `''` 改成這個網址（保留單引號），上傳 GitHub。
+3. 手機重新整理兩次，聊天頁上方會顯示「小夥伴由 AI 回答」。
+
+### 注意
+
+- **費用控管**：這個網址是公開的，請到 OpenAI 帳號設定每月用量上限，避免被大量呼叫。APP 端已限制每則訊息 300 字、一次只能送一則。
+- **隱私**：同樣把工作流程設定為「不保存成功的執行紀錄」。APP 只送出訊息、今天心情和活動範圍，不送姓名。
+- **展示備案**：初審現場若網路不穩，APP 會自動退回預先設計的回應，不會出現錯誤畫面。
+- 測試清單同第五節，在 APP 聊天頁再跑一次。
+
+## 九、APP 的「LINE」按鈕與 Bot 指令
+
+APP 每一頁右上角的綠色「LINE」按鈕，會打開官方帳號 **@615drddf** 的聊天室，並自動帶入以下文字（長輩按「傳送」即可）：
+
+| 情況 | 帶入的文字 |
+|---|---|
+| 今天還沒選心情 | `我想聊聊` |
+| 今天有選心情 | `我想聊聊，今天心情不錯／還好／有點累／心煩` |
+
+請在 Bot 規則中加入下面這段，讓小夥伴收到後先問「想聊聊什麼呢？」：
+
+```
+# 補充｜收到「我想聊聊」時
+* 訊息只有「我想聊聊」：溫暖打招呼，然後問「想聊聊什麼呢？」，並提供選項讓對方挑：今天的心情、身體狀況、想動一動、APP 怎麼用、只是想找人說說話。
+  範例：「好開心你來找我聊天😊 想聊聊什麼呢？可以跟我說今天的心情、身體狀況、想動一動，或只是想找人說說話都可以喔！」
+* 訊息是「我想聊聊，今天心情○○」：先依心情回應（規則見上一節），再問「想多說一點嗎？」
+```
+
+如果 Bot 服務支援「快速回覆按鈕」，建議把五個選項做成按鈕，長輩不用打字。

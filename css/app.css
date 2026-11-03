@@ -44,7 +44,7 @@ main { max-width: 520px; margin: 0 auto; min-height: 100dvh; display: flex; flex
 .ic { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- 內容 ---------- */
-.body { flex: 1; padding: 1rem 1rem calc(7rem + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: .9rem; }
+.body { flex: 1; padding: 1rem 1rem calc(11rem + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: .9rem; }
 h2 { font-size: 1.05rem; margin: .4rem 0 0; }
 p { margin: 0; }
 .lead { font-size: 1.3rem; font-weight: 800; line-height: 1.4; }
@@ -52,6 +52,39 @@ p { margin: 0; }
 .note.strong { color: var(--ink); font-size: 1rem; font-weight: 700; }
 .progress { color: var(--leaf-deep); font-weight: 800; }
 .demo-flag { align-self: flex-start; background: var(--sun); color: var(--ink); font-size: .75rem; font-weight: 800; padding: .15rem .7rem; border-radius: 1rem; }
+
+/* 隨時聊天按鈕（底部分頁上方，右下角） */
+.chat-fab {
+  position: fixed; z-index: 29; right: max(1rem, calc((100vw - 520px) / 2 + 1rem));
+  bottom: calc(6.2rem + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: .35rem; min-height: 64px; padding: 0 1.2rem 0 1rem;
+  border: 0; border-radius: 32px; background: var(--leaf-deep); color: #fff; font: inherit; font-size: 1.05rem; font-weight: 800;
+  box-shadow: 0 6px 18px rgba(29, 43, 36, .28); cursor: pointer;
+}
+.bubble.typing { color: var(--muted); font-style: italic; }
+.line-top {
+  flex: none; width: 56px; height: 56px; border-radius: 16px; border: 0; background: #06C755; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-decoration: none;
+  font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer;
+}
+.line-top .ic { width: 24px; height: 24px; }
+.top h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-fab.line { background: #06C755; text-decoration: none; }
+.body.no-tab { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+.body.no-tab ~ .chat-fab { bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+.demo-card { background: var(--surface); border: 2px solid var(--line); border-radius: 20px; padding: .6rem .8rem .7rem; text-align: center; }
+.demo-card svg.demo { width: 100%; max-height: 260px; }
+.encounter { background: #FFF8E6; border: 3px solid var(--sun); border-radius: 22px; padding: 1rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .4rem; }
+.spirit-btn { border: 0; background: none; padding: 0; cursor: pointer; animation: bob 1.6s ease-in-out infinite; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.taps { display: flex; gap: .5rem; } .taps i { width: 22px; height: 22px; border-radius: 50%; background: var(--line); } .taps i.on { background: var(--sun); }
+.dex { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.dex-item { display: flex; flex-direction: column; align-items: center; text-align: center; background: #F7FAF5; border-radius: 16px; padding: .5rem .2rem; }
+.dex-item b { font-size: .85rem; } .dex-item span { font-size: .72rem; color: var(--muted); }
+.dex-item.unknown b { color: var(--muted); }
+.postcard { width: 100%; border-radius: 16px; border: 2px solid var(--line); }
+.trail-flower { background: none; border: 0; }
+.line-card { background: #E9F9EF; border: 3px solid #06C755; border-radius: 20px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
 
 /* APP 內建瀏覽器提示 */
 .inapp { background: #FFF4DA; border: 3px solid var(--sun); border-radius: 20px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
@@ -241,6 +274,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 4px solid 
 .tabs button.on { color: var(--leaf-deep); background: var(--tint); }
 
 @media (prefers-reduced-motion: reduce) {
-  .grow { animation: none; }
+  .grow, .spirit-btn { animation: none; }
   * { scroll-behavior: auto !important; }
 }

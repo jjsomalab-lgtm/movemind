@@ -28,3 +28,6 @@ export async function nativeShare(text) {
   }
   return false;
 }
+
+// 打開官方帳號聊天室並預先填好文字（使用者按「傳送」即可）
+export const lineOaChatURL = (id, text) => `https://line.me/R/oaMessage/${encodeURIComponent(id)}/?${encodeURIComponent(text)}`;
