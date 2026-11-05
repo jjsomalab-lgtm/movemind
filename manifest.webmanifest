@@ -1,13 +1,13 @@
 {
-  "name": "心動力 AI",
+  "name": "MoveMind 心動綠洲",
   "short_name": "心動力",
   "description": "陪長輩每天動一動的運動陪伴 APP",
   "lang": "zh-Hant-TW",
   "start_url": "./#today",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#EEF4EC",
-  "theme_color": "#2F7D57",
+  "background_color": "#F7F5EC",
+  "theme_color": "#164F43",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

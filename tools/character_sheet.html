@@ -1,0 +1,31 @@
+<!doctype html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><style>
+@page { size: A4 landscape; margin: 0; }
+body { margin: 0; font-family: "Noto Sans CJK TC","PingFang TC",sans-serif; color: #1D2B24; }
+.pg { width: 297mm; height: 210mm; padding: 12mm 14mm; box-sizing: border-box; page-break-after: always; position: relative; background: #F6F9F3; overflow: hidden; }
+h1 { margin: 0; font-size: 24pt; color: #215C40; } .sub { color: #5B6F69; margin: 1mm 0 6mm; font-size: 10pt; }
+.cast { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; }
+.c { background: #fff; border-radius: 4mm; padding: 3mm; text-align: center; border: 1px solid #DDE7DF; }
+.c b { font-size: 12pt; display: block; } .c .k { font-size: 7.5pt; color: #2F7D57; font-weight: 700; } .c p { font-size: 8pt; margin: 1mm 0 0; color: #47594F; line-height: 1.4; }
+.row { display: flex; gap: 6mm; } .box { background: #fff; border-radius: 4mm; padding: 4mm 5mm; border: 1px solid #DDE7DF; flex: 1; font-size: 9pt; line-height: 1.55; }
+.sw { display: inline-block; width: 13mm; height: 13mm; border-radius: 3mm; margin: 0 1.5mm 1mm 0; vertical-align: middle; border: 1px solid #0001; }
+.scene { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; } .scene div { border-radius: 3mm; overflow: hidden; } .scene svg { width: 100%; display: block; } .scene p { margin: 1mm 0 0; font-size: 8pt; text-align: center; }
+h2 { font-size: 13pt; margin: 0 0 2mm; color: #215C40; } ul { margin: 0; padding-left: 5mm; }
+.foot { position: absolute; bottom: 6mm; left: 14mm; right: 14mm; font-size: 7.5pt; color: #7A8A83; display: flex; justify-content: space-between; }
+</style></head><body>
+<section class="pg"><h1>心動綠洲｜葉靈角色設定</h1><p class="sub">以臺灣常見植物為靈感的原創角色・臉在花心裡的「花糰子」造型・每隻都有個性、台詞與一個懷舊小問題</p><div class="cast" id="cast"></div>
+<div class="foot"><span>心動力 AI · MoveMind AI　角色與場景皆為團隊原創，以程式繪製</span><span>01</span></div></section>
+<section class="pg"><h1>美術設計規範</h1><p class="sub">給之後加入的設計夥伴：照這份規範擴充角色與場景，畫面才會一致</p>
+<div class="row" style="margin-bottom:5mm">
+ <div class="box"><h2>造型語言</h2><ul><li>圓潤、無尖角；角色以圓形花心為臉，花瓣環繞</li><li>描邊用同色系深色，不用純黑</li><li>柔和漸層＋左上高光，像繪本插畫</li><li>表情：大眼睛帶反光、腮紅、小嘴微笑</li><li>手腳都是小葉子，強調「植物的孩子」</li></ul></div>
+ <div class="box"><h2>色彩</h2><span class="sw" style="background:#2F7D57"></span><span class="sw" style="background:#3CC48A"></span><span class="sw" style="background:#EEF4EC"></span><span class="sw" style="background:#F2B33D"></span><span class="sw" style="background:#C2391B"></span><span class="sw" style="background:#A9D8EE"></span><p style="margin:1mm 0 0">主色葉綠、品牌薄荷綠、背景米綠、獎勵暖黃、木棉紅（只用於「不舒服」與木棉）。場景低彩度，角色高彩度，讓長輩一眼看到角色。</p></div>
+ <div class="box"><h2>長輩友善</h2><ul><li>角色至少 46px，可點區域 48px 以上</li><li>不閃爍、動畫緩慢，支援「減少動態效果」</li><li>文字不放在圖上，一律另外顯示並可朗讀</li><li>不使用任何既有遊戲的角色、道具或介面風格</li></ul></div>
+</div>
+<h2>場景會隨真實時間變化</h2><div class="scene" id="scene"></div>
+<div class="foot"><span>心動力 AI · MoveMind AI</span><span>02</span></div></section>
+<script type="module">
+import { SPIRITS } from '/js/content.js';
+import { spiritArt, sceneBack, sceneFront } from '/js/art.js';
+const from = { walk: '散步時遇到', checkin: '打卡時遇到', home: '在家運動時來訪' };
+document.getElementById('cast').innerHTML = SPIRITS.map(s => `<div class="c">${spiritArt(s.id, 92)}<b>${s.name}</b><span class="k">${from[s.from]}</span><p>${s.line}</p><p>💬 ${s.talk[2]}</p></div>`).join('') + `<div class="c" style="display:flex;flex-direction:column;justify-content:center">${spiritArt('jasmine', 70, { silhouette: true })}<b style="color:#8FA58A">未遇到時</b><p>以剪影顯示，保留期待感</p></div>`;
+document.getElementById('scene').innerHTML = [['dawn','清晨 5–8 時'],['day','白天 8–16 時'],['dusk','傍晚 16–19 時'],['night','夜晚（星星與螢火蟲）']].map(([t,l]) => `<div><svg viewBox="0 0 400 320">${sceneBack(400,320,t)}${sceneFront(400,320,t)}</svg><p>${l}</p></div>`).join('');
+</script></body></html>

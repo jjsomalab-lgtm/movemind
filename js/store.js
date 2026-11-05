@@ -8,7 +8,8 @@ const blank = () => ({
     name: '',
     screening: { done: false, level: 'standard', flags: [], at: null, cleared: false, setupWith: null }, // level: 'seated' | 'assisted' | 'standard'
     contacts: [],          // [{ name, phone }]
-    fontScale: 1,          // 1 | 1.15 | 1.3
+    fontScale: 1,          // 1 | 1.25 | 1.5 | 2
+    simple: false,         // 簡易模式：首頁只顯示最重要的三個按鈕
     voice: true,
     shareRoute: false,     // 是否保存完整散步路線（預設只存距離與時間）
   },
@@ -16,6 +17,8 @@ const blank = () => ({
   sessions: [],            // { id, at, type:'home'|'walk', activityId, name, reps, minutes, km, route? }
   moods: [],               // { at, mood }
   fof: [],                 // 跌倒擔心度 { at, score }（0–10）
+  breaths: [],             // 呼吸練習 { at, minutes }
+  reads: [],               // 讀過的知識卡 id
   garden: { seeds: 1, water: 0, plots: [{ type: 'jasmine', stage: 0 }], unlocked: ['jasmine', 'osmanthus', 'magnolia', 'bougainvillea'], checkins: [], communityKm: 3.2, spirits: [] },
   chat: [],
   chatSession: '',         // 網頁聊天的對話代碼（讓 AI 記得前幾句），不含個人資料
@@ -151,4 +154,33 @@ export function loadDemo() {
 export function chatSession() {
   if (!state.chatSession) { state.chatSession = 'web-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); save(); }
   return state.chatSession;
+}
+
+export function addBreath(minutes) {
+  state.breaths.push({ at: new Date().toISOString(), minutes });
+  state.garden.water += 1; // 晨露：存起來，種新植物或下次成長時使用
+  save();
+}
+
+export function markRead(id) {
+  if (!state.reads.includes(id)) { state.reads.push(id); save(); }
+}
+
+// 參與點數：只會增加。活動 2 點、其他各 1 點
+export function points() {
+  return state.sessions.length * 2 + state.moods.length + state.breaths.length + (state.garden.spirits || []).length + state.reads.length;
+}
+
+export function earnedBadges() {
+  const s = state, got = new Set();
+  if (s.moods.length) got.add('first-mood');
+  if (s.breaths.length) got.add('first-breath');
+  if (s.sessions.some(x => x.type === 'home')) got.add('first-move');
+  if (s.sessions.some(x => x.type === 'walk')) got.add('first-walk');
+  if ((s.garden.spirits || []).length) got.add('first-spirit');
+  if (s.reads.length >= 3) got.add('reader');
+  if (s.sessions.length >= 10) got.add('ten-moves');
+  const days = new Set([...s.sessions, ...s.breaths].filter(x => (Date.now() - new Date(x.at)) / 864e5 < 7).map(x => dayKey(x.at)));
+  if (days.size >= 3) got.add('three-days');
+  return got;
 }

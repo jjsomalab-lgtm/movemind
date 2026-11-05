@@ -1,6 +1,7 @@
 // 心動綠洲｜遊戲規則與原創 SVG 繪圖
 import { get, save } from './store.js';
 import { PLANTS, GARDEN_SLOTS, KM_PER_WATER, STARTER_PLANTS, SPIRITS } from './content.js';
+import { spiritArt, sceneBack, sceneFront, timeOfDay } from './art.js';
 
 // ---------- 規則 ----------
 // 居家活動：得到 1 顆種子，並幫最需要的植物澆 1 次水
@@ -128,31 +129,22 @@ export function plantSVG(type, stage, x, y, s = 1) {
   return g + flower(type, x, y - h - 4 * s, s);
 }
 
-export function gardenSVG({ highlight = -1 } = {}) {
+export function gardenSVG({ highlight = -1, time = timeOfDay() } = {}) {
   const g = get().garden;
-  const W = 360, H = 300;
-  // 九格花圃，後排較小，製造前後深度
-  const rows = [{ y: 136, s: 0.9, xs: [104, 180, 256] }, { y: 196, s: 1.05, xs: [80, 180, 280] }, { y: 268, s: 1.25, xs: [60, 180, 300] }];
-  // 先種前排中間（最大、最明顯），再往兩側與後排
+  const W = 400, H = 320;
+  // 九格花圃，後排較小，製造前後深度；先種前排中間（最大、最明顯）
+  const rows = [{ y: 230, s: 0.85, xs: [150, 200, 250] }, { y: 264, s: 1, xs: [122, 200, 278] }, { y: 304, s: 1.15, xs: [96, 200, 304] }];
   const slots = [...rows].reverse().flatMap(r => [r.xs[1], r.xs[0], r.xs[2]].map(x => ({ x, y: r.y, s: r.s })));
   let plants = '';
-  const order = slots.map((sl, i) => i).sort((a, b) => slots[a].y - slots[b].y); // 由後往前畫，前排蓋住後排
+  const order = slots.map((sl, i) => i).sort((a, b) => slots[a].y - slots[b].y);
   order.forEach(i => {
     const sl = slots[i];
     const p = g.plots[i];
-    if (p) {
-      plants += `<g class="${i === highlight ? 'grow' : ''}" style="transform-origin:${sl.x}px ${sl.y}px">${plantSVG(p.type, p.stage, sl.x, sl.y, sl.s)}</g>`;
-    } else {
-      plants += `<ellipse cx="${sl.x}" cy="${sl.y}" rx="${20 * sl.s}" ry="${6 * sl.s}" fill="none" stroke="#B9C9A8" stroke-width="2" stroke-dasharray="4 4"/>`;
-    }
+    if (p) plants += `<g class="${i === highlight ? 'grow' : ''}" style="transform-origin:${sl.x}px ${sl.y}px">${plantSVG(p.type, p.stage, sl.x, sl.y, sl.s)}</g>`;
+    else plants += `<ellipse cx="${sl.x}" cy="${sl.y}" rx="${20 * sl.s}" ry="${6 * sl.s}" fill="#000" opacity=".06" stroke="#6F8F5E" stroke-opacity=".5" stroke-width="2" stroke-dasharray="4 4"/>`;
   });
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="我的心動綠洲，種了 ${g.plots.length} 株植物">
-    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CFE8F2"/><stop offset="1" stop-color="#EAF4E4"/></linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#sky)"/>
-    <circle cx="300" cy="46" r="24" fill="#F6C453"/>
-    <path d="M0 120 Q 90 82 190 112 T 360 100 V300 H0Z" fill="#B8D99A"/>
-    <path d="M0 140 Q 120 112 230 134 T 360 128 V300 H0Z" fill="#9CCB7E"/>
-    ${plants}
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="我的心動綠洲，種了 ${g.plots.length} 株植物">
+    ${sceneBack(W, H, time)}${plants}${sceneFront(W, H, time)}
   </svg>`;
 }
 
@@ -175,25 +167,5 @@ export function befriend(id, where) {
   save();
 }
 
-// 原創造型：圓圓的「花糰子」，臉在花心裡，下面有兩片小葉子當腳
-export function spiritSVG(id, size = 120, { silhouette = false } = {}) {
-  const s = SPIRITS.find(x => x.id === id);
-  if (!s) return '';
-  const fill = silhouette ? '#C9D6C4' : s.petal, edge = silhouette ? '#B5C4AF' : s.edge;
-  let petals = '';
-  for (let i = 0; i < s.n; i++) {
-    const a = i * 360 / s.n;
-    if (s.shape === 'dot') petals += `<circle cx="50" cy="16" r="9" fill="${fill}" stroke="${edge}" stroke-width="2" transform="rotate(${a} 50 50)"/>`;
-    else if (s.shape === 'bract') petals += `<path d="M50 50 Q22 30 50 8 Q78 30 50 50Z" fill="${fill}" stroke="${edge}" stroke-width="2" transform="rotate(${a} 50 50)"/>`;
-    else if (s.shape === 'long') petals += `<ellipse cx="50" cy="18" rx="9" ry="20" fill="${fill}" stroke="${edge}" stroke-width="2" transform="rotate(${a} 50 50)"/>`;
-    else if (s.shape === 'point') petals += `<path d="M50 50 Q36 30 50 6 Q64 30 50 50Z" fill="${fill}" stroke="${edge}" stroke-width="2" transform="rotate(${a} 50 50)"/>`;
-    else if (s.shape === 'heart') petals += `<path d="M50 48 C30 36 34 10 46 14 Q50 16 50 22 Q50 16 54 14 C66 10 70 36 50 48Z" fill="${fill}" stroke="${edge}" stroke-width="2" transform="rotate(${a} 50 50)"/>`;
-    else petals += `<ellipse cx="50" cy="${s.shape === 'big' ? 18 : 20}" rx="${s.shape === 'big' ? 16 : 13}" ry="${s.shape === 'big' ? 19 : 16}" fill="${fill}" stroke="${edge}" stroke-width="2" transform="rotate(${a} 50 50)"/>`;
-  }
-  const face = silhouette
-    ? '<text x="50" y="58" text-anchor="middle" font-size="22" font-weight="800" fill="#8FA58A">?</text>'
-    : '<circle cx="43" cy="49" r="3" fill="#1D2B24"/><circle cx="57" cy="49" r="3" fill="#1D2B24"/><path d="M44 57 Q50 62 56 57" stroke="#1D2B24" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="38" cy="55" r="3" fill="#F7A6A0" opacity=".7"/><circle cx="62" cy="55" r="3" fill="#F7A6A0" opacity=".7"/>';
-  return `<svg viewBox="0 0 100 112" width="${size}" height="${size * 1.12}" aria-hidden="true">
-    <path d="M40 82 q-12 14 -22 16 q10 -14 22 -16z M60 82 q12 14 22 16 q-10 -14 -22 -16z" fill="${silhouette ? '#B5C4AF' : '#4E9A63'}"/>
-    ${petals}<circle cx="50" cy="52" r="20" fill="${silhouette ? '#DDE6D8' : '#FFF6DE'}" stroke="${edge}" stroke-width="2"/>${face}</svg>`;
-}
+// 角色造型見 js/art.js
+export function spiritSVG(id, size = 120, opts = {}) { return spiritArt(id, size, opts); }

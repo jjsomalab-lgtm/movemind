@@ -3,6 +3,7 @@ import * as S from './store.js';
 import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
 import { demoSVG } from './demos.js';
+import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak } from './speech.js';
 import { createWalk, getPosition } from './walk.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
@@ -27,11 +28,19 @@ const I = {
   chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   sound: '<path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
+  lake: '<path d="M3 15c2 0 2-1.5 4.5-1.5S10 15 12 15s2.5-1.5 4.5-1.5S19 15 21 15M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19M12 11c-2.5-1.5-3-5 0-8 3 3 2.5 6.5 0 8z"/>',
+  forest: '<path d="M8 21v-4M16 21v-6M8 17 4 17 8 9l4 8zM16 15h-5l5-10 5 10z"/>',
+  book: '<path d="M4 5c3-1.5 5.5-1.5 8 0v15c-2.5-1.5-5-1.5-8 0zM20 5c-3-1.5-5.5-1.5-8 0v15c2.5-1.5 5-1.5 8 0z"/>',
+  tree: '<path d="M12 21v-7M12 14c-4 0-7-2.5-7-6s3-5 7-5 7 1.5 7 5-3 6-7 6zM9 21h6"/>',
 };
 const icon = (k, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`;
 
 // ---------- 共用版面 ----------
-function setFont() { document.documentElement.style.setProperty('--fs', S.get().profile.fontScale); }
+function setFont() {
+  const f = S.get().profile.fontScale;
+  document.documentElement.style.setProperty('--fs', f);
+  document.documentElement.dataset.scale = f >= 1.5 ? 'large' : 'normal'; // 字放大時，改成單欄排版避免擠在一起
+}
 
 // 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
 const NO_LINE = ['welcome', 'setupWith', 'screening', 'screenResult', 'check', 'companion', 'help', 'stopToday'];
@@ -43,16 +52,19 @@ function lineHeaderBtn() {
 
 function header(title, { back = null } = {}) {
   return `<header class="top">
-    ${back ? `<button class="icon-btn" data-go="${back}" aria-label="回上一頁">${icon('back')}</button>` : `<button class="icon-btn" data-go="settings" aria-label="設定">${icon('gear')}</button>`}
+    ${back ? `<button class="icon-btn" data-go="${back}" aria-label="回上一頁">${icon('back')}</button>` : `<button class="brand" data-go="today" aria-label="回首頁">${brandMark(42)}</button>`}
     <h1>${esc(title)}</h1>
     ${lineHeaderBtn()}
     <button class="help-btn" data-act="help">不舒服</button>
   </header>`;
 }
 
+// 五大場景：首頁、心靈湖畔、活力森林、知識花園、我的綠洲
+const TAB_OF = { activities: 'forest', walk: 'forest', garden: 'oasis', week: 'oasis' };
 function nav(active) {
-  const items = [['today', '今天', 'home'], ['activities', '活動', 'move'], ['walk', '散步', 'walk'], ['garden', '綠洲', 'garden'], ['week', '紀錄', 'chart']];
-  return `<nav class="tabs">${items.map(([id, label, ic]) =>
+  active = TAB_OF[active] || active;
+  const items = [['today', '首頁', 'home'], ['lake', '心靈湖畔', 'lake'], ['forest', '活力森林', 'forest'], ['knowledge', '知識花園', 'book'], ['oasis', '我的綠洲', 'tree']];
+  return `<nav class="tabs" aria-label="主要選單">${items.map(([id, label, ic]) =>
     `<button data-go="${id}" class="${active === id ? 'on' : ''}" ${active === id ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></button>`).join('')}</nav>`;
 }
 
@@ -71,8 +83,9 @@ function inAppBanner() {
 
 function page(title, body, { tab = null, back = null } = {}) {
   const banner = ['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '';
-  const fab = '';
-  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${body}</section>` + fab + (tab ? nav(tab) : '');
+  const homeLink = back && back !== 'today' && !NO_LINE.includes(currentScreen) && currentScreen !== 'walking'
+    ? `<button class="btn ghost home-link" data-go="today">${icon('home')} 回首頁</button>` : '';
+  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
   main().querySelector('.body').scrollTop = 0;
   window.scrollTo(0, 0);
 }
@@ -91,11 +104,12 @@ export function go(name, ...args) {
   cleanup(name);
   currentScreen = screens[name] ? name : 'today';
   (screens[name] || screens.today)(...args);
-  if (['today', 'activities', 'walk', 'garden', 'week'].includes(name)) history.replaceState(null, '', '#' + name);
+  if (['today', 'lake', 'forest', 'knowledge', 'oasis', 'activities', 'walk', 'garden', 'week'].includes(name)) history.replaceState(null, '', '#' + name);
 }
 
 function cleanup() {
   stopSpeaking();
+  if (run.breathTimer) { clearTimeout(run.breathTimer); run.breathTimer = null; }
   if (run.pose) { import('./pose.js').then(m => m.stopPose()); run.pose = false; }
 }
 
@@ -197,31 +211,99 @@ function rescreenDue() {
   return at && (Date.now() - new Date(at).getTime()) / 86400000 > C.RESCREEN_DAYS;
 }
 
+function greetWord() {
+  const h = new Date().getHours();
+  return h < 11 ? '早安' : h < 14 ? '午安' : h < 18 ? '午後好' : '晚安';
+}
+
+// 今日推薦任務：依今天的狀態挑一個最適合的小行動
+function todayTask() {
+  const s = S.get(), t = s.today;
+  const doneHome = s.sessions.some(x => x.type === 'home' && S.dayKey(x.at) === t.date);
+  const doneWalk = s.sessions.some(x => x.type === 'walk' && S.dayKey(x.at) === t.date);
+  if (t.mood === 'tired' || t.mood === 'upset') return { title: '讓心慢下來', what: '2 分鐘呼吸練習', why: '累或心煩的時候，先照顧心情，身體也會跟著放鬆。', btn: '開始呼吸練習', attr: 'data-go="breathe"' };
+  if (t.allowed === 'none') return { title: '今天好好休息', what: '讀一張健康小知識', why: '身體不舒服的日子，休息就是最好的照顧。', btn: '到知識花園看看', attr: 'data-go="knowledge"' };
+  if (!doneHome) {
+    const pick = C.ACTIVITIES.filter(x => x.level === 'seated')[new Date().getDate() % 5];
+    return { title: '讓身體輕鬆一下', what: `${pick.minutes} 分鐘「${pick.name}」`, why: '透過溫和的身體活動，為自己創造一點舒適的時間。', btn: '開始今天的小任務', attr: t.allowed ? `data-activity="${pick.id}"` : 'data-act="startActivity"' };
+  }
+  if (!doneWalk && t.allowed === 'standard') return { title: '出門走一走', what: '散步 10–15 分鐘', why: '沿路會開花，說不定還會遇到葉靈。', btn: '準備出門', attr: 'data-go="walk"' };
+  return { title: '今天做得很好', what: '到我的綠洲看看生命之樹', why: '你今天已經照顧了自己，花點時間欣賞一下成果吧。', btn: '看我的綠洲', attr: 'data-go="oasis"' };
+}
+
+function treeInfo() {
+  const p = S.points();
+  let i = 0; C.TREE_STAGES.forEach((st, k) => { if (p >= st.at) i = k; });
+  const next = C.TREE_STAGES[i + 1];
+  const pct = next ? Math.round((p - C.TREE_STAGES[i].at) / (next.at - C.TREE_STAGES[i].at) * 100) : 100;
+  return { stage: i, name: C.TREE_STAGES[i].name, next, pct, points: p };
+}
+
+function lineLink(text, label, cls = 'btn line-btn') {
+  return C.lineReady() ? `<a class="${cls}" href="${lineOaChatURL(C.LINE_OA_ID, text)}" target="_blank" rel="noopener">${label}</a>` : `<button class="${cls}" data-go="chat">${label}</button>`;
+}
+
 screens.today = () => {
   S.ensureToday();
   const s = S.get(), t = s.today, w = S.weekStats();
-  const mood = t.mood ? C.MOODS.find(m => m.id === t.mood) : null;
-  const g = greeting();
-  page('心動力', `
+  const name = s.profile.name ? `${s.profile.name}，` : '';
+  const title = `${greetWord()}，今天也為自己留一點時間。`;
+  const sub = '從一個小小的行動開始，讓身心慢慢找回平衡。';
+  const task = todayTask(), tree = treeInfo();
+  const toast = run.homeToast; run.homeToast = null;
+  const hero = `<section class="hero">
+      <p class="eyebrow">${brandMark(22)} MoveMind 心動綠洲</p>
+      <h2 class="hero-title">${esc(name)}${title}</h2>
+      <p class="hero-sub">${sub}</p>
+      ${sayBtn(name + title + sub)}
+    </section>`;
+  if (s.profile.simple) {
+    page('首頁', `
+      ${s.demo ? '<p class="demo-flag">展示模式：資料為示範用</p>' : ''}${hero}
+      <button class="btn huge" data-go="mood">說說今天的心情</button>
+      <button class="btn huge primary" ${task.attr}>${task.btn}</button>
+      ${lineLink(lineOpener(), '跟小夥伴聊聊（LINE）', 'btn huge line-btn')}
+      <button class="text-link" data-go="settings">設定（可關閉簡易模式）</button>
+    `, { tab: 'today' });
+    return;
+  }
+  page('首頁', `
     ${s.demo ? '<p class="demo-flag">展示模式：資料為示範用</p>' : ''}
-    <div class="hero-card">
-      <div class="buddy">${buddy()}</div>
-      <div><p class="lead">${esc(g)}</p><p>今天想聊聊，還是一起動一動？</p></div>
-      ${sayBtn(g + '今天想聊聊，還是一起動一動？')}
-    </div>
+    ${hero}
     ${rescreenDue() ? '<button class="btn soft" data-act="redoScreening">已經 3 個月了，請重新回答健康小問題</button>' : ''}
     ${fofDue() ? '<button class="btn soft" data-go="fof">每週小問題：走路時擔心跌倒嗎？</button>' : ''}
-    <button class="btn big mood-btn" data-go="mood">${mood ? `今天心情：${mood.face} ${mood.label}（點我更改）` : '說說今天的心情'}</button>
-    <div class="grid2">
-      <button class="tile move" data-act="startActivity"><strong>開始活動</strong><span>在家輕鬆動一動</span></button>
-      <button class="tile walk" data-go="walk"><strong>出門散步</strong><span>幫花園澆水</span></button>
-      <button class="tile garden" data-go="garden"><strong>心動綠洲</strong><span>看看我的花園</span></button>
-      <button class="tile chat" data-go="chat"><strong>跟小夥伴聊聊</strong><span>說說話也很好</span></button>
-    </div>
-    <button class="week-strip" data-go="week">
-      <span>這週已經動了 <b>${w.total}</b> 次${w.km ? `，散步 <b>${w.km.toFixed(1)}</b> 公里` : ''}</span>
-      <span class="dots">${w.days.map(d => `<i class="${d.count ? 'on' : ''}" title="${d.label}"></i>`).join('')}</span>
+    <section class="card">
+      <h3 class="card-title">今天的心情</h3>
+      <div class="mood-row-quick">${C.MOODS.map(m => `<button class="mood-chip ${t.mood === m.id ? 'on' : ''}" data-moodq="${m.id}" aria-pressed="${t.mood === m.id}"><span class="face">${m.face}</span>${m.label}</button>`).join('')}</div>
+      ${toast ? `<div class="bubble bot">${esc(toast)}</div>` : '<p class="note">點一下就記錄，心靈湖畔會開一朵心情之花。</p>'}
+      ${t.mood === 'upset' ? `<a class="btn soft" href="tel:${C.EMERGENCY.mental}">想找人說說話：撥打 1925 安心專線</a>` : ''}
+    </section>
+    <section class="task-card">
+      <p class="eyebrow">今日任務</p>
+      <h3>${esc(task.title)}</h3>
+      <p class="task-what">${esc(task.what)}</p>
+      <p>${esc(task.why)}</p>
+      <button class="btn primary big" ${task.attr}>${esc(task.btn)}</button>
+    </section>
+    <button class="oasis-card" data-go="oasis">
+      <div class="oasis-pic">${treeOfLife(tree.stage, { size: 120 })}</div>
+      <div><p class="eyebrow">我的綠洲</p><h3>生命之樹：${tree.name}</h3>
+        <div class="bar" role="progressbar" aria-valuenow="${tree.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="生命之樹成長進度"><i style="width:${tree.pct}%"></i></div>
+        <p class="note">這週活動 ${w.total} 次${w.km ? `・散步 ${w.km.toFixed(1)} 公里` : ''}</p></div>
     </button>
+    <div class="quick">
+      <button class="quick-item lake" data-go="lake">${icon('lake')}<b>心靈湖畔</b><span>呼吸與放鬆</span></button>
+      <button class="quick-item forest" data-go="forest">${icon('forest')}<b>活力森林</b><span>在家動一動</span></button>
+      <button class="quick-item walk" data-go="walk">${icon('walk')}<b>出門散步</b><span>遇見葉靈</span></button>
+      <button class="quick-item know" data-go="knowledge">${icon('book')}<b>知識花園</b><span>健康小知識</span></button>
+    </div>
+    <section class="ai-card">
+      <div class="buddy">${buddy()}</div>
+      <div><h3>心動小夥伴</h3><p>想聊聊天、說說心情，小夥伴都在。</p></div>
+      ${lineLink(lineOpener(), '到 LINE 跟小夥伴聊')}
+      <button class="btn ghost" data-go="chat">在 APP 裡聊</button>
+    </section>
+    <button class="text-link" data-go="settings">${icon('gear')} 設定（字的大小、簡易模式、聯絡人）</button>
   `, { tab: 'today' });
 };
 
@@ -281,19 +363,22 @@ screens.stopToday = () => {
     <div class="q-card warn"><p class="q">${msg}</p>${sayBtn(msg)}</div>
     <a class="btn danger" href="tel:${C.EMERGENCY.medical}">撥打 119</a>
     ${contactButtons()}
-    <button class="btn ghost" data-go="garden">看看花園就好</button>
+    <button class="btn ghost" data-go="oasis">看看我的綠洲就好</button>
   `, { back: 'today' });
   speak(msg);
 };
 
-// ---------- 活動列表 ----------
+// ---------- 活力森林（活動列表） ----------
+screens.forest = () => screens.activities();
 screens.activities = () => {
   S.ensureToday();
   const t = S.get().today;
+  const banner = `<div class="scene-hero">${forestScene()}<div class="scene-cap"><b>活力森林</b><span>溫和、有支撐的活動，照自己的步調來</span></div></div>`;
   if (!t.allowed) {
-    page('活動', `
-      <div class="q-card"><p class="q">開始活動前，先回答 3 個簡單問題，確認今天身體狀況。</p></div>
-      <button class="btn primary" data-act="startCheck">開始確認</button>
+    page('活力森林', `${banner}
+      <section class="card"><h3 class="card-title">開始前，先確認今天的身體</h3><p>回答 3 個簡單問題，我們會挑出今天適合你的活動。</p>
+      <button class="btn primary big" data-act="startCheck">開始確認</button></section>
+      <button class="text-link" data-card="warning-signs">${icon('book')} 活動時，哪些訊號要停下來？</button>
     `, { tab: 'activities' });
     return;
   }
@@ -302,20 +387,28 @@ screens.activities = () => {
   const assisted = effectiveLevel() === 'assisted';
   const list = C.ACTIVITIES.map(a => {
     const ok = !seatedOnly || a.level === 'seated';
-    const tag = a.level === 'seated' ? '坐著做' : assisted ? '扶著椅子・需有人陪同' : '扶著椅子';
-    return `<button class="act-card ${ok ? '' : 'off'}" ${ok ? `data-activity="${a.id}"` : 'disabled aria-disabled="true"'}>
-      <span class="act-name">${a.name}</span>
-      <span class="act-meta">${tag}・約 ${a.minutes} 分鐘${a.pose ? '・可用鏡頭計數' : ''}</span>
-      <span class="act-goal">${ok ? a.goal : '今天先做坐著的活動'}</span>
-    </button>`;
+    const tag = a.level === 'seated' ? '坐姿版本' : '扶椅版本';
+    return `<article class="ex-card ${ok ? '' : 'off'}">
+      <div class="ex-pic">${demoSVG(a.id)}</div>
+      <div class="ex-body">
+        <h3>${a.name}</h3>
+        <p class="ex-tags"><span>${tag}</span><span>低強度</span><span>約 ${a.minutes} 分鐘</span>${assisted && a.level !== 'seated' ? '<span class="warn">需有人陪同</span>' : ''}</p>
+        <p>${ok ? a.goal : '今天先做坐著的活動'}</p>
+        ${ok ? `<p class="ex-caution">⚠ ${esc(a.caution)}</p><button class="btn primary" data-activity="${a.id}">開始練習</button>` : ''}
+      </div>
+    </article>`;
   }).join('');
   const lead = seatedOnly
     ? (effectiveLevel() === 'seated' ? '依照健康小問題的結果，目前先做坐著的溫和動作。' : '依照今天的回答，先做坐著的溫和動作。')
     : assisted ? '坐著的活動可以自己做；扶著椅子的活動請在有人陪同時進行。' : '今天可以做坐著或扶著椅子的活動。';
-  page('選一個活動', `
-    <p class="note strong">${lead}</p>
-    <div class="act-list">${list}</div>
+  page('活力森林', `${banner}
+    <p class="lead-note">${lead}</p>
+    <div class="ex-list">${list}</div>
+    <section class="card walk-cta"><h3 class="card-title">${icon('walk')} 出門散步</h3><p>沿路開花、遇見葉靈，也幫花園澆水。</p><button class="btn big" data-go="walk">準備出門</button></section>
+    <button class="text-link" data-card="warning-signs">${icon('book')} 活動時，哪些訊號要停下來？</button>
   `, { tab: 'activities' });
+  // 列表中的示範動畫先暫停，避免太多東西同時在動；進入活動頁才播放
+  main().querySelectorAll('.ex-pic svg').forEach(svg => svg.pauseAnimations?.());
 };
 
 // ---------- 有人陪同確認 ----------
@@ -396,6 +489,8 @@ function finishActivity() {
   if (run.reps === 0) { go('activities'); return; }
   const before = S.get().garden.plots.map(p => p.stage);
   S.addSession({ type: 'home', activityId: a.id, name: a.name, reps: run.reps, minutes: a.minutes });
+  const homeCount = S.get().sessions.filter(x => x.type === 'home').length;
+  if (homeCount % C.HOME_ACTIVITIES_PER_SPIRIT === 0) (run.pendingSpirits = run.pendingSpirits || []).push('home');
   rewardHome();
   const after = S.get().garden.plots.map(p => p.stage);
   const grown = after.findIndex((s, i) => s !== before[i]);
@@ -441,7 +536,9 @@ screens.reward = () => {
   const p = r.grown >= 0 ? S.get().garden.plots[r.grown] : null;
   const grownText = p ? `${C.PLANTS[p.type].name}長到「${C.STAGE_NAMES[p.stage]}」了！` : '';
   const mr = run.afterMoodReply; run.afterMoodReply = null;
+  if ((run.pendingSpirits || []).length && !run.greeting) nextPendingSpirit();
   page('做得很好', `
+    <div id="greetArea">${greetPanel()}</div>
     <div class="reward">
       ${mr ? `<div class="bubble bot" style="text-align:left">${esc(mr)}</div>` : ''}
       <p class="lead">${esc(r.title)}</p>
@@ -456,6 +553,15 @@ screens.reward = () => {
 };
 
 // ---------- 心動綠洲 ----------
+// 花園裡的葉靈：會走動，點一下會說話（包含懷舊小問題）
+function livingGarden(opts = {}) {
+  const g = S.get().garden;
+  const ids = [...new Set((g.spirits || []).map(s => s.id))].slice(0, 6);
+  const spots = [[16, 76], [84, 72], [36, 90], [64, 92], [50, 70], [92, 90]];
+  const spirits = ids.map((id, i) => `<button class="live-spirit" style="left:${spots[i][0]}%;top:${spots[i][1]}%;animation-delay:${i * .7}s" data-talk="${id}" aria-label="跟${esc(C.SPIRITS.find(s => s.id === id).name)}說話">${spiritSVG(id, 46)}</button>`).join('');
+  return `<div class="garden-view live">${gardenSVG(opts)}${spirits}</div>${ids.length ? '<p id="spiritTalk" class="spirit-talk">點一下花園裡的葉靈，聽聽它想說什麼</p>' : ''}`;
+}
+
 screens.garden = () => {
   const g = S.get().garden;
   const bloom = g.plots.filter(p => p.stage === 3).length;
@@ -463,7 +569,7 @@ screens.garden = () => {
   const picker = canPlant() ? `<h2>選一種植物種下去</h2><div class="seed-row">${g.unlocked.map(t => `
       <button class="seed" data-plant="${t}"><svg viewBox="0 0 60 70" aria-hidden="true">${plantSVG(t, 3, 30, 62, 0.95)}</svg>${C.PLANTS[t].name}</button>`).join('')}</div>` : '';
   page('心動綠洲', `
-    <div class="garden-view">${gardenSVG()}</div>
+    ${livingGarden()}
     <div class="stats3">
       <div><b>${g.seeds}</b><span>顆種子</span></div>
       <div><b>${g.plots.length}</b><span>株植物</span></div>
@@ -591,52 +697,53 @@ function stopWalk() {
   const r = rewardWalk(out.km);
   const after = S.get().garden.plots.map(p => p.stage);
   const grown = after.findIndex((s, i) => s !== before[i]);
-  const friends = (run.walkInfo.friends || []).map(id => C.SPIRITS.find(s => s.id === id)?.name).filter(Boolean);
-  run.lastWalk = { km: out.km, minutes: out.minutes, flowers: out.flowers, friends: run.walkInfo.friends || [], at: new Date().toISOString() };
-  run.encounter = null; run.encQueue = [];
-  run.lastReward = { walk: true, title: `散步 ${out.km.toFixed(2)} 公里，完成！`, detail: `路上開了 ${out.flowers} 朵花${friends.length ? `，認識了${friends.join('、')}` : ''}。${grown >= 0 ? `也幫花園澆了 ${r.water} 次水。` : `存了 ${r.water} 次水，種新植物時會用上。`}`, grown };
+  const waiting = (run.pendingSpirits || []).length;
+  run.lastWalk = { km: out.km, minutes: out.minutes, flowers: out.flowers, friends: [], at: new Date().toISOString() };
+  run.lastReward = { walk: true, title: `散步 ${out.km.toFixed(2)} 公里，完成！`, detail: `路上開了 ${out.flowers} 朵花${waiting ? `，有 ${waiting} 隻葉靈跟著你回來` : ''}。${grown >= 0 ? `也幫花園澆了 ${r.water} 次水。` : `存了 ${r.water} 次水，種新植物時會用上。`}`, grown };
   go('afterMood');
 }
 
 // ---------- 遇到葉靈 ----------
-// 一次只出現一隻；同時遇到時排隊，打完招呼再出現下一隻
+// 安全設計：散步中「不需要看手機」。遇到葉靈時只用語音和震動通知，
+// 葉靈先排隊等待，等散步結束、坐下休息時，再一一打招呼（只要輕點一下）。
 function queueEncounter(from) {
-  if (run.encounter) { (run.encQueue = run.encQueue || []).push(from); return; }
-  showEncounter(from);
+  (run.pendingSpirits = run.pendingSpirits || []).push(from);
+  const n = run.pendingSpirits.length;
+  try { navigator.vibrate?.([120, 80, 120]); } catch (e) { /* 不支援震動 */ }
+  speak(from === 'checkin' ? '打卡的地方有一隻特別的葉靈在等你，休息的時候再跟它打招呼喔。' : '有一隻葉靈在等你，休息的時候再跟它打招呼喔。');
+  const el = $('#encounter');
+  if (el) el.innerHTML = `<div class="waiting">${spiritSVG(C.SPIRITS[0].id, 40, { silhouette: true })}<span>有 <b>${n}</b> 隻葉靈在等你，散步結束後再打招呼</span></div>`;
 }
 
-function showEncounter(from) {
+function nextPendingSpirit() {
+  const from = (run.pendingSpirits || [])[0];
+  if (!from) { run.greeting = null; return; }
   const { spirit, isNew } = meetSpirit(from);
-  run.encounter = { spirit, isNew, taps: 0, from };
-  renderEncounter();
-  speak(`${isNew ? '遇到了新朋友' : '又見面了'}，${spirit.name}！輕輕點三下，跟它打招呼吧。`);
+  run.greeting = { spirit, isNew, from };
 }
 
-function renderEncounter() {
-  const el = $('#encounter'); const e = run.encounter;
-  if (!el) return;
-  if (!e) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="encounter">
-    <p class="lead">${e.isNew ? '遇到新的葉靈！' : '又見面了！'}</p>
-    <button class="spirit-btn" data-act="greet" aria-label="跟${esc(e.spirit.name)}打招呼">${spiritSVG(e.spirit.id, 130)}</button>
+function greetPanel() {
+  const e = run.greeting; if (!e) return '';
+  const left = (run.pendingSpirits || []).length;
+  return `<div class="encounter">
+    <p class="lead">${e.isNew ? '有新的葉靈來找你！' : '老朋友又來看你了！'}</p>
+    <button class="spirit-btn" data-act="greet" aria-label="跟${esc(e.spirit.name)}打招呼">${spiritSVG(e.spirit.id, 140)}</button>
     <p><b>${esc(e.spirit.name)}</b>：${esc(e.spirit.line)}</p>
-    <div class="taps">${[0, 1, 2].map(i => `<i class="${i < e.taps ? 'on' : ''}"></i>`).join('')}</div>
-    <p class="note">輕點葉靈三下打招呼，它就會加入你的圖鑑</p>
+    <button class="btn primary" data-act="greet">跟${esc(e.spirit.name)}打招呼</button>
+    ${left > 1 ? `<p class="note">還有 ${left - 1} 隻在排隊</p>` : ''}
   </div>`;
 }
 
 function greet() {
-  const e = run.encounter; if (!e) return;
-  e.taps += 1;
-  if (e.taps < 3) { renderEncounter(); speak(['你好！', '我們一起走走吧！'][e.taps - 1]); return; }
-  befriend(e.spirit.id, e.from === 'checkin' ? '打卡' : '散步');
-  run.walkInfo && (run.walkInfo.friends = [...(run.walkInfo.friends || []), e.spirit.id]);
-  const msg = `${e.spirit.name}${e.isNew ? '加入你的圖鑑了！' : '很開心又遇到你！'}`;
-  run.encounter = null; renderEncounter();
-  const m = $('#walkMsg'); if (m) m.textContent = msg;
+  const e = run.greeting; if (!e) return;
+  befriend(e.spirit.id, { walk: '散步', checkin: '打卡', home: '在家' }[e.from] || '散步');
+  if (run.lastWalk && e.from !== 'home') run.lastWalk.friends = [...run.lastWalk.friends, e.spirit.id];
+  run.pendingSpirits.shift();
+  const msg = `${e.spirit.name}${e.isNew ? '加入你的圖鑑，搬進花園住了！' : '很開心又遇到你！'}${e.spirit.talk[2]}`;
   speak(msg);
-  const next = (run.encQueue || []).shift();
-  if (next) setTimeout(() => showEncounter(next), 1500);
+  nextPendingSpirit();
+  const box = $('#greetArea');
+  if (box) box.innerHTML = run.greeting ? greetPanel() : `<div class="bubble bot">${esc(msg)}</div>`;
 }
 
 async function doCheckin() {
@@ -647,7 +754,7 @@ async function doCheckin() {
   const msg = r.unlockedKapok ? `打卡成功！解鎖了高雄市花「木棉花」，還得到 1 顆種子。` : `在「${name}」打卡成功，得到 1 顆種子！`;
   const el = $('#walkMsg'); if (el) el.textContent = msg;
   speak(msg);
-  setTimeout(() => queueEncounter('checkin'), 1800);
+  queueEncounter('checkin');
 }
 
 // ---------- 週回顧 ----------
@@ -807,6 +914,128 @@ async function sendChat(text) {
   screens.chat(); speak(reply); chatExtras(flag);
 }
 
+// ---------- 心靈湖畔 ----------
+screens.lake = () => {
+  const s = S.get();
+  const flowers = s.moods.length;
+  const reply = run.lakeReply; run.lakeReply = null;
+  page('心靈湖畔', `
+    <div class="scene-hero">${lakeScene(flowers)}<div class="scene-cap"><b>心靈湖畔</b><span>每記錄一次心情，湖上就開一朵心情之花（已開 ${flowers} 朵）</span></div></div>
+    <section class="card">
+      <h3 class="card-title">你現在的感覺是？</h3>
+      <div class="feel-list">${C.LAKE_FEELINGS.map(f => f.go === 'line'
+        ? lineLink('我想聊聊', f.label, 'feel')
+        : `<button class="feel" data-feel="${f.id}">${f.label}</button>`).join('')}</div>
+      ${reply ? `<div class="bubble bot">${esc(reply.text)}</div>${reply.btns}` : ''}
+    </section>
+    <button class="feature-card" data-go="breathe"><span class="fc-icon">💧</span><span><b>呼吸練習</b><br>吸 4 秒、吐 6 秒，完成可以得到一滴晨露</span></button>
+    <button class="feature-card" data-go="mood"><span class="fc-icon">🌸</span><span><b>記錄今天的心情</b><br>點一下，湖上就開一朵花</span></button>
+    <button class="feature-card" data-go="fof"><span class="fc-icon">🍃</span><span><b>走路時擔心跌倒嗎？</b><br>每週回答一次，看看信心有沒有回來</span></button>
+    <button class="feature-card" data-go="chat"><span class="fc-icon">💬</span><span><b>跟小夥伴聊聊</b><br>在 APP 裡說說話</span></button>
+    <p class="note">心靈湖畔提供陪伴與放鬆，不是心理治療，也不做任何診斷。心裡很難受時，請撥打 <a href="tel:1925">1925 安心專線</a>（24 小時）。</p>
+  `, { tab: 'lake' });
+};
+
+// ---------- 呼吸練習 ----------
+screens.breathe = () => {
+  const intro = run.breathIntro; run.breathIntro = null;
+  page('呼吸練習', `
+    ${intro ? `<div class="bubble bot">${esc(intro)}</div>` : ''}
+    <div class="breath-stage"><div class="breath-orb" id="orb"></div><p id="breathCue" class="breath-cue">準備好了，就選一個長度開始</p><p id="breathLeft" class="note"></p></div>
+    <p class="note">用鼻子慢慢吸氣 ${C.BREATH.inhale} 秒，再慢慢吐氣 ${C.BREATH.exhale} 秒。不需要憋氣；覺得頭暈，就恢復平常的呼吸。</p>
+    <div class="answer-row two" id="breathBtns"><button class="btn primary" data-breath="1">1 分鐘</button><button class="btn" data-breath="3">3 分鐘</button></div>
+    <div id="breathDone"></div>
+  `, { back: 'lake' });
+};
+
+function startBreath(min) {
+  const total = Math.round(min * 60 / (C.BREATH.inhale + C.BREATH.exhale));
+  let n = 0;
+  $('#breathBtns').hidden = true;
+  const orb = $('#orb'), cue = $('#breathCue'), left = $('#breathLeft');
+  const step = phase => {
+    if (currentScreen !== 'breathe') return;
+    if (phase === 'in') {
+      if (n >= total) return finishBreath(min);
+      n += 1;
+      orb.style.transitionDuration = C.BREATH.inhale + 's'; orb.classList.add('in');
+      cue.textContent = '慢慢吸氣…'; left.textContent = `第 ${n} 次，共 ${total} 次`;
+      speak('吸氣', { force: false });
+      run.breathTimer = setTimeout(() => step('out'), C.BREATH.inhale * 1000);
+    } else {
+      orb.style.transitionDuration = C.BREATH.exhale + 's'; orb.classList.remove('in');
+      cue.textContent = '慢慢吐氣…';
+      speak('吐氣', { force: false });
+      run.breathTimer = setTimeout(() => step('in'), C.BREATH.exhale * 1000);
+    }
+  };
+  step('in');
+}
+
+function finishBreath(min) {
+  S.addBreath(min);
+  $('#breathCue').textContent = '完成了！';
+  const msg = '做得很好！你得到了一滴晨露，已經存進花園，下次植物長大時會用上。';
+  $('#breathDone').innerHTML = `<div class="done-card"><span class="big-emoji">💧</span><p>${msg}</p></div>
+    <button class="btn primary" data-go="oasis">看看我的綠洲</button><button class="btn" data-go="lake">回心靈湖畔</button>`;
+  speak(msg);
+}
+
+// ---------- 知識花園 ----------
+screens.knowledge = () => {
+  const reads = new Set(S.get().reads);
+  const cats = [...new Set(C.KNOWLEDGE.map(k => k.cat))];
+  page('知識花園', `
+    <div class="know-hero"><p class="eyebrow">知識花園</p><h2>每天一張小卡，認識自己的身體與心情</h2><p class="note">已讀 ${reads.size} / ${C.KNOWLEDGE.length} 張</p></div>
+    ${cats.map(cat => `<h3 class="section-title">${cat}</h3><div class="know-list">${C.KNOWLEDGE.filter(k => k.cat === cat).map(k => `
+      <button class="know-card ${reads.has(k.id) ? 'read' : ''}" data-card="${k.id}"><span class="cat">${k.cat}</span><b>${k.title}</b><span class="state">${reads.has(k.id) ? '✓ 讀過了' : '點我閱讀'}</span></button>`).join('')}</div>`).join('')}
+    <p class="note">知識卡為一般健康資訊，不是醫療建議；內容由團隊整理，待專業人員確認。身體有狀況請詢問醫師。</p>
+  `, { tab: 'knowledge' });
+};
+
+screens.card = id => {
+  const k = C.KNOWLEDGE.find(x => x.id === id) || C.KNOWLEDGE[0];
+  const firstRead = !S.get().reads.includes(k.id);
+  S.markRead(k.id);
+  const idx = C.KNOWLEDGE.indexOf(k), next = C.KNOWLEDGE[(idx + 1) % C.KNOWLEDGE.length];
+  page('知識卡', `
+    <article class="know-detail">
+      <span class="cat">${k.cat}</span>
+      <h2>${esc(k.title)}</h2>
+      ${sayBtn(k.title + k.body.join(''))}
+      ${k.body.map(p => `<p>${esc(p)}</p>`).join('')}
+      ${k.src ? `<p class="src">資料來源：${esc(k.src)}</p>` : ''}
+    </article>
+    ${firstRead ? '<p class="note">讀完一張卡片，生命之樹也長大了一點 🌱</p>' : ''}
+    <button class="btn primary big" data-card="${next.id}">下一張：${esc(next.title)}</button>
+    <button class="btn" data-go="knowledge">回知識花園</button>
+  `, { back: 'knowledge' });
+};
+
+// ---------- 我的綠洲：生命之樹、徽章、花園、每週回顧 ----------
+screens.oasis = () => {
+  const tree = treeInfo(), got = S.earnedBadges(), w = S.weekStats();
+  const g = S.get().garden;
+  page('我的綠洲', `
+    <section class="tree-card">
+      ${treeOfLife(tree.stage, { size: 260 })}
+      <h2>生命之樹：${tree.name}</h2>
+      <div class="bar big" role="progressbar" aria-valuenow="${tree.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="生命之樹成長進度"><i style="width:${tree.pct}%"></i></div>
+      <p>${tree.next ? `再參與 ${tree.next.at - tree.points} 次，就會長成「${tree.next.name}」` : '你的生命之樹已經完全長大了！'}</p>
+      <p class="note">記錄心情、呼吸練習、活動、散步、讀知識卡，都會讓樹長大。樹只會長大，不會因為休息而倒退。</p>
+    </section>
+    <section class="card">
+      <h3 class="card-title">紀念徽章（${got.size} / ${C.BADGES.length}）</h3>
+      <div class="badges">${C.BADGES.map(b => `<div class="badge ${got.has(b.id) ? 'got' : ''}">${badgeSVG(b.icon, got.has(b.id))}<b>${b.name}</b><span>${got.has(b.id) ? b.desc : '還沒解鎖：' + b.desc}</span></div>`).join('')}</div>
+    </section>
+    <div class="quick">
+      <button class="quick-item garden" data-go="garden">${icon('garden')}<b>心動綠洲花園</b><span>${g.plots.length} 株植物・${new Set((g.spirits || []).map(s => s.id)).size} 隻葉靈</span></button>
+      <button class="quick-item week" data-go="week">${icon('chart')}<b>每週回顧</b><span>這週活動 ${w.total} 次</span></button>
+    </div>
+    <button class="text-link" data-go="settings">${icon('gear')} 設定</button>
+  `, { tab: 'oasis' });
+};
+
 // ---------- 不舒服 / 求助 ----------
 function contactButtons() {
   return S.get().profile.contacts.map(c => `<a class="btn" href="tel:${esc(c.phone)}">打給${esc(c.name)}</a>`).join('');
@@ -854,7 +1083,8 @@ screens.settings = () => {
   page('設定', `
     <label class="field">我的稱呼<input id="sname" type="text" maxlength="12" value="${esc(p.name)}"></label>
     <h2>字的大小</h2>
-    <div class="answer-row">${[[1, '標準'], [1.15, '大'], [1.3, '特大']].map(([v, l]) => `<button class="btn choice ${p.fontScale === v ? 'on' : ''}" data-font="${v}">${l}</button>`).join('')}</div>
+    <div class="answer-row four">${[[1, '100%'], [1.25, '125%'], [1.5, '150%'], [2, '200%']].map(([v, l]) => `<button class="btn choice ${p.fontScale === v ? 'on' : ''}" data-font="${v}" aria-pressed="${p.fontScale === v}">${l}</button>`).join('')}</div>
+    <label class="switch"><input type="checkbox" data-act="toggleSimple" ${p.simple ? 'checked' : ''}><span>簡易模式（首頁只顯示三個大按鈕）</span></label>
     <label class="switch"><input type="checkbox" data-act="toggleVoice" ${p.voice ? 'checked' : ''}><span>語音朗讀</span></label>
     <button class="btn ghost" data-act="testVoice">測試聲音</button>
     <p id="voiceMsg" class="note"></p>
@@ -907,7 +1137,8 @@ async function makePostcard() {
     await img.decode().catch(() => {});
     x.drawImage(img, 80 + i * 320, 650, 300, 336);
   }
-  x.font = font(40, 600); x.fillText(w.friends.length ? `今天遇到：${w.friends.map(id => C.SPIRITS.find(s => s.id === id)?.name).join('、')}` : '下次散步，說不定會遇到葉靈喔！', 80, 1080);
+  x.font = font(40, 600); const names = w.friends.map(id => C.SPIRITS.find(s => s.id === id)?.name);
+  x.fillText(names.length ? `今天遇到：${names.slice(0, 3).join('、')}${names.length > 3 ? ' 等' : ''}` : '下次散步，說不定會遇到葉靈喔！', 80, 1080);
   x.fillStyle = '#2F7D57'; x.font = font(46); x.fillText('心動力 AI｜讓運動從心開始', 80, 1240);
   const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
   const file = new File([blob], '心動力散步明信片.png', { type: 'image/png' });
@@ -974,6 +1205,7 @@ const actions = {
   helpSms: () => sendHelp('sms'),
   testVoice: () => { speak('你好，我是心動小夥伴，聽得到我的聲音嗎？', { force: true }); $('#voiceMsg').textContent = voiceStatus(); },
   toggleVoice: e => { S.get().profile.voice = e.target.checked; S.save(); },
+  toggleSimple: e => { S.get().profile.simple = e.target.checked; S.save(); },
   addContact: () => { readContact(); S.save(); screens.settings(); },
   saveSettings: () => { S.get().profile.name = $('#sname').value.trim(); readContact(); S.save(); go('today'); },
   redoScreening: () => go('setupWith'),
@@ -1018,6 +1250,30 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.chip) return sendChat(d.chip);
+  if (d.moodq) {
+    S.setMood(d.moodq);
+    run.homeToast = C.MOODS.find(m => m.id === d.moodq).reply + ' 心靈湖畔開了一朵心情之花。';
+    screens.today(); speak(run.homeToast || ''); return;
+  }
+  if (d.feel) {
+    const f = C.LAKE_FEELINGS.find(x => x.id === d.feel);
+    if (f.go === 'breathe') { run.breathIntro = f.reply; return go('breathe'); }
+    if (f.go === 'mood:tired') {
+      S.setMood('tired');
+      run.lakeReply = { text: C.MOODS.find(m => m.id === 'tired').reply, btns: '<button class="btn primary" data-go="breathe">做 1 分鐘呼吸練習</button><button class="btn" data-act="startActivity">坐著輕輕動一動</button>' };
+      screens.lake(); return speak(run.lakeReply?.text || C.MOODS.find(m => m.id === 'tired').reply);
+    }
+  }
+  if (d.breath) return startBreath(Number(d.breath));
+  if (d.card) return go('card', d.card);
+  if (d.talk) {
+    const sp = C.SPIRITS.find(s => s.id === d.talk);
+    run.talkIdx = (run.talkIdx || 0) + 1;
+    const line = sp.talk[run.talkIdx % sp.talk.length];
+    const el = $('#spiritTalk'); if (el) el.innerHTML = `<b>${esc(sp.name)}</b>：${esc(line)}`;
+    t.classList.remove('hop'); void t.offsetWidth; t.classList.add('hop');
+    return speak(line, { force: true });
+  }
   if (d.after) {
     if (d.after !== 'skip') { S.setAfterMood(d.after); run.afterMoodReply = C.AFTER_MOODS.find(m => m.id === d.after).reply; }
     return go('reward');
