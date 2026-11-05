@@ -92,7 +92,7 @@ function inAppBanner() {
 function voicePill() {
   if (!canSpeak || IN_APP || !S.get().profile.voice || voiceHeard() || run.voiceDismissed) return '';
   if (run.voiceFail) return `<div class="voice-help" role="status"><b>🔇 還是沒有聽到聲音嗎？</b><ul>
-    ${IS_IOS ? '<li>iPhone 側邊的<b>靜音開關</b>要撥到「有聲音」（不是橘色）</li>' : ''}
+    ${IS_IOS ? '<li>iPhone 側邊的<b>靜音開關</b>要撥到「有聲音」（不是橘色）；沒有開關的機型，請在控制中心關閉「靜音模式」</li><li>到「設定 → 輔助使用 → 語音內容 → 聲音 → 中文（臺灣）」確認已下載語音</li>' : ''}
     <li>按手機側邊的音量鍵，把<b>媒體音量</b>調大</li>
     ${IS_ANDROID ? '<li>到手機「設定 → 文字轉語音」，確認已安裝<b>中文（臺灣）</b>語音</li>' : ''}
     <li>確定是用 ${IS_IOS ? 'Safari' : 'Chrome'} 開啟，不是 LINE 裡面</li></ul>
@@ -100,7 +100,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v10.5（2026-11-06）';
+export const APP_VERSION = 'v10.6（2026-11-06）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {

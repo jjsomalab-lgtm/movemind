@@ -6,6 +6,7 @@
 import { get } from './store.js';
 
 const ok = 'speechSynthesis' in window;
+const IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let voice = null, unlocked = false, timer = 0, heard = false;
 export const voiceHeard = () => heard; // 手機真的發出過聲音（onstart 觸發）
 
@@ -19,18 +20,20 @@ function pickVoice() {
 if (ok) {
   pickVoice();
   speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
-  // 第一次點擊畫面時，用一段無聲的語音「解鎖」手機的發聲權限
+  // 手機發聲權限：iPhone 只承認 click／touchend 這類「完成的點擊」，touchstart、pointerdown 不算
+  // 所以在這兩個事件上解鎖，並且一直嘗試到真的成功發聲為止
   const unlock = () => {
-    if (unlocked) return;
-    unlocked = true;
+    if (heard) return;
     try {
+      speechSynthesis.resume();
       const u = new SpeechSynthesisUtterance(' ');
       u.volume = 0; u.lang = 'zh-TW';
       speechSynthesis.speak(u);
+      unlocked = true;
     } catch (e) { /* 忽略 */ }
   };
-  document.addEventListener('pointerdown', unlock, { once: true, capture: true });
-  document.addEventListener('touchstart', unlock, { once: true, capture: true });
+  document.addEventListener('touchend', unlock, { capture: true, passive: true });
+  document.addEventListener('click', unlock, { capture: true });
 }
 
 export const canSpeak = 'speechSynthesis' in window;
@@ -39,7 +42,6 @@ export function speak(text, { force = false } = {}) {
   if (!ok || !text) return;
   if (!force && !get().profile.voice) return;
   clearTimeout(timer);
-  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
   if (!voice) pickVoice();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'zh-TW';
@@ -47,7 +49,12 @@ export function speak(text, { force = false } = {}) {
   u.rate = 0.9; // 稍慢，長輩比較聽得清楚
   u.volume = 1;
   u.onstart = () => { heard = true; };
-  timer = setTimeout(() => { speechSynthesis.resume(); speechSynthesis.speak(u); }, 80);
+  const go = () => { try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { /* 忽略 */ } };
+  // iPhone：必須在點擊的「同一個瞬間」呼叫 speak，延遲就會被擋 → 沒有正在說話時立刻說
+  // Chrome（Android）：cancel 後立刻 speak 常常無聲 → 只有需要打斷時才稍微延遲
+  if (IOS) { speechSynthesis.cancel(); go(); }            // iPhone／iPad：一律同步發聲
+  else if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); timer = setTimeout(go, 80); }
+  else go();
 }
 
 export function stopSpeaking() {
