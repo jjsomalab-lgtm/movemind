@@ -81,7 +81,7 @@ function inAppBanner() {
   </div>`;
 }
 
-export const APP_VERSION = 'v10.1（2026-11-05）';
+export const APP_VERSION = 'v10.2（2026-11-06）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -148,7 +148,7 @@ screens.welcome = () => {
     </label>
     <p class="note">開始之前，有 ${C.SCREENING.length} 個簡單問題，幫我們知道哪些活動適合你。</p>
     <button class="btn primary" data-act="startScreening">好，開始</button>
-    <button class="btn ghost" data-act="demo">載入展示資料（初審展示用）</button>
+    <button class="tour-link" data-act="demo">瀏覽示範旅程</button>
   `);
   speak('你好！我是心動小夥伴。我會陪你每天動一動，也會幫你照顧一座小花園。');
 };
@@ -281,7 +281,7 @@ screens.today = () => {
     </section>`;
   if (s.profile.simple) {
     page('首頁', `
-      ${s.demo ? '<p class="demo-flag">展示模式：資料為示範用</p>' : ''}${hero}
+      ${s.demo ? `<p class="tour-flag"><span>示範旅程</span><button data-act="endDemo">結束示範</button></p>` : ''}${hero}
       <button class="btn huge" data-go="mood">說說今天的心情</button>
       <button class="btn huge primary" ${task.attr}>${task.btn}</button>
       ${lineLink(lineOpener(), '跟小夥伴聊聊（LINE）', 'btn huge line-btn')}
@@ -299,7 +299,7 @@ screens.today = () => {
       </div>
     </section>`;
   page('首頁', `
-    ${s.demo ? '<p class="demo-flag">展示模式：資料為示範用</p>' : ''}
+    ${s.demo ? `<p class="tour-flag"><span>示範旅程</span><button data-act="endDemo">結束示範</button></p>` : ''}
     ${heroScene}
     <section class="task-card float">
       <p class="eyebrow">今日任務</p>
@@ -1138,7 +1138,7 @@ screens.settings = () => {
     <div class="panel">
       <h2>關於資料</h2>
       <p class="note">目前是訪客模式，所有紀錄只存在這支手機的瀏覽器裡，不會上傳。</p>
-      <button class="btn ghost" data-act="demo">載入展示資料</button>
+      <button class="tour-link" data-act="demo">瀏覽示範旅程（以一週範例資料體驗完整功能）</button>
       <p class="note">目前版本：${APP_VERSION}</p>
       <button class="btn ghost danger-text" data-act="reset">清除所有資料</button>
     </div>
@@ -1201,6 +1201,8 @@ const actions = {
   greet,
   help: () => go('help'),
   demo: () => { S.loadDemo(); setFont(); go('today'); },
+  // 結束示範：清除範例資料，回到第一次使用的歡迎畫面（下一位使用者看到的是全新狀態）
+  endDemo: () => { if (confirm('結束示範旅程？範例資料會清除，回到歡迎畫面。')) { S.reset(); setFont(); go('welcome'); } },
   startScreening: () => { S.get().profile.name = $('#name').value.trim(); S.save(); go('setupWith'); },
   finishOnboard: () => { readContact(); S.save(); go('today'); },
   startActivity: () => {
@@ -1346,7 +1348,8 @@ document.addEventListener('submit', e => {
 setFont();
 S.ensureToday();
 const start = location.hash.slice(1);
-if (!S.get().profile.screening.done) go('welcome');
+if (start === 'demo') { S.loadDemo(); setFont(); history.replaceState(null, '', location.pathname); go('today'); }
+else if (!S.get().profile.screening.done) go('welcome');
 else go(screens[start] ? start : 'today');
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
