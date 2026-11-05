@@ -81,7 +81,7 @@ function inAppBanner() {
   </div>`;
 }
 
-export const APP_VERSION = 'v10（2026-11-05）';
+export const APP_VERSION = 'v10.1（2026-11-05）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -274,7 +274,7 @@ screens.today = () => {
   const task = todayTask(), tree = treeInfo();
   const toast = run.homeToast; run.homeToast = null;
   const hero = `<section class="hero">
-      <p class="eyebrow">${brandMark(22)} MoveMind 心動綠洲</p>
+      <p class="eyebrow">${brandMark(22)} 心動力 AI · MoveMind</p>
       <h2 class="hero-title">${esc(name)}${title}</h2>
       <p class="hero-sub">${sub}</p>
       ${sayBtn(name + title + sub)}
@@ -292,7 +292,7 @@ screens.today = () => {
   const heroScene = `<section class="hero-scene">
       ${livingGarden()}
       <div class="hero-text">
-        <p class="eyebrow">${brandMark(22)} MoveMind 心動綠洲</p>
+        <p class="eyebrow">${brandMark(22)} 心動力 AI · MoveMind</p>
         <h2 class="hero-title">${esc(name)}${title}</h2>
         <p class="hero-sub">${sub}</p>
         ${sayBtn(name + title + sub)}

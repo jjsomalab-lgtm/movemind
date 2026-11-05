@@ -1,7 +1,7 @@
 /* 心動力 AI｜為長輩設計：大字、高對比、大按鈕、一個畫面一件事 */
 :root {
   --fs: 1;
-  /* Design tokens｜MoveMind 心動綠洲 */
+  /* Design tokens｜心動力 AI（MoveMind AI） */
   --forest: #164F43;      /* Primary Forest Green */
   --forest-deep: #0E3A31;
   --sage: #E7F0E7;        /* Sage Green */
@@ -486,7 +486,7 @@ body[data-scene="forest"] .ex-pic { background: #E8F1DF; }
     display: flex; flex-direction: column; gap: .35rem; padding: 7.5rem .8rem 1.5rem; border-top: 0; border-right: 1px solid var(--line);
     background: rgba(255, 255, 255, .82); backdrop-filter: blur(8px);
   }
-  .tabs::before { content: "MoveMind\A心動綠洲"; white-space: pre; position: absolute; top: 1.6rem; left: 1.4rem; font-weight: 900; font-size: 1.25rem; line-height: 1.3; color: var(--forest); letter-spacing: .02em; }
+  .tabs::before { content: "心動力 AI\AMoveMind AI"; white-space: pre; position: absolute; top: 1.6rem; left: 1.4rem; font-weight: 900; font-size: 1.25rem; line-height: 1.3; color: var(--forest); letter-spacing: .02em; }
   .tabs button { flex-direction: row; justify-content: flex-start; gap: .8rem; padding: 0 1rem; min-height: 60px; font-size: 1.05rem; }
   .tabs .ic { width: 30px; height: 30px; }
   .body { padding: 1.4rem 2rem 3rem; gap: 1.2rem; }
