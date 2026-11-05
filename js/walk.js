@@ -16,12 +16,13 @@ export function meters(a, b) {
 
 export function createWalk(mapEl, { onUpdate, onError }) {
   let demo = false;
-  let flowers = [];
+  let flowers = [], dest = null, destMarker = null, destLine = null;
   let pts = [], dist = 0, start = 0, watchId = null, simTimer = null, lock = null, map = null, line = null, dot = null, tick = null;
   const hasLeaflet = !!window.L;
 
   function initMap(center) {
     if (hasLeaflet) {
+      setTimeout(() => drawDest(), 0);
       map = L.map(mapEl, { zoomControl: false, attributionControl: true }).setView(center, 17);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
       line = L.polyline([], { color: '#2F7D57', weight: 7 }).addTo(map);
@@ -29,6 +30,13 @@ export function createWalk(mapEl, { onUpdate, onError }) {
     } else {
       mapEl.innerHTML = '<svg class="route-fallback" viewBox="0 0 300 200" aria-label="散步路線"><polyline fill="none" stroke="#2F7D57" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" points=""/><g class="fl"></g><circle class="me" r="8" fill="#C2391B" stroke="#fff" stroke-width="3" cx="-20" cy="-20"/></svg><p class="map-note">地圖需要網路，目前先畫出路線形狀。</p>';
     }
+  }
+
+  // 目的地：地圖上標出目標公園，並畫一條虛線指向它
+  function drawDest() {
+    if (!hasLeaflet || !map || !dest) return;
+    destMarker = L.marker([dest.lat, dest.lng], { icon: L.divIcon({ html: '<div class="dest-pin">🌳</div>', className: 'dest-icon', iconSize: [44, 44], iconAnchor: [22, 40] }) }).addTo(map);
+    destLine = L.polyline(pts.length ? [pts[pts.length - 1], [dest.lat, dest.lng]] : [], { color: '#D69B54', weight: 4, dashArray: '8 10' }).addTo(map);
   }
 
   function drawFlower(f) {
@@ -57,7 +65,7 @@ export function createWalk(mapEl, { onUpdate, onError }) {
     pts.push(p);
     // 花徑：每走 40 公尺，路邊開一朵花
     if (Math.floor(dist / FLOWER_EVERY_M) > flowers.length) { flowers.push({ p, c: FLOWER_COLORS[flowers.length % FLOWER_COLORS.length] }); drawFlower(flowers[flowers.length - 1]); }
-    if (hasLeaflet) { line.addLatLng(p); dot.setLatLng(p); map.panTo(p); } else drawFallback();
+    if (hasLeaflet) { line.addLatLng(p); dot.setLatLng(p); map.panTo(p); if (destLine) destLine.setLatLngs([p, [dest.lat, dest.lng]]); } else drawFallback();
     emit();
   }
 
@@ -100,6 +108,7 @@ export function createWalk(mapEl, { onUpdate, onError }) {
       return out;
     },
     current: () => pts[pts.length - 1] || null,
+    setDest(d) { dest = d; if (map) { destMarker?.remove(); destLine?.remove(); drawDest(); } },
     // 從其他頁面回到散步畫面時，把地圖重新畫在新的區塊上
     attach(el) {
       if (map) { map.remove(); map = null; }

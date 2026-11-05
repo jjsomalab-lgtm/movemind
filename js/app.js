@@ -5,7 +5,8 @@ import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, 
 import { demoSVG } from './demos.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak } from './speech.js';
-import { createWalk, getPosition } from './walk.js';
+import { createWalk, getPosition, meters } from './walk.js';
+import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
 
 const $ = sel => document.querySelector(sel);
@@ -81,7 +82,7 @@ function inAppBanner() {
   </div>`;
 }
 
-export const APP_VERSION = 'v10.2（2026-11-06）';
+export const APP_VERSION = 'v10.3（2026-11-06）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -663,7 +664,7 @@ screens.walk = () => {
     page('出門散步', `
       <div class="q-card"><p class="q">${why}</p>${sayBtn(why)}</div>
       ${t.allowed === 'none' ? '' : '<button class="btn primary" data-go="activities">去做坐著的活動</button>'}
-      <button class="btn ghost" data-act="walkDemo">模擬路線（室內展示用）</button>
+      <button class="tour-link" data-act="walkDemo">示範散步（室內示範用，不需定位）</button>
     `, { tab: 'walk' });
     return;
   }
@@ -680,11 +681,50 @@ screens.walk = () => {
         <li>手機螢幕要保持亮著，才能記錄路線。</li>
       </ul>
     </div>
+    <div class="panel">
+      <h2>想走去哪裡？（可以不選）</h2>
+      <p class="note">找找附近的公園，選一個當目的地。到了會自動打卡，還會遇到特別的葉靈。</p>
+      <div id="parkList">${parkListHTML()}</div>
+    </div>
     <label class="switch"><input type="checkbox" data-act="toggleRoute" ${keep ? 'checked' : ''}><span>保存完整路線（不勾選時只記錄距離和時間）</span></label>
-    <button class="btn huge primary" data-act="walkReal">開始散步</button>
-    <button class="btn ghost" data-act="walkDemo">模擬路線（室內展示用）</button>
+    <button class="btn huge primary" data-act="walkReal">${run.walkDest ? `開始散步・走去${esc(run.walkDest.name)}` : '開始散步'}</button>
+    <p class="note">第一次使用時，手機會詢問能不能使用「位置」，請按「允許」。</p>
+    <button class="tour-link" data-act="walkDemo">示範散步（室內示範用，不需定位）</button>
   `, { tab: 'walk' });
 };
+
+function parkListHTML() {
+  const st = run.parkState;
+  if (!st) return '<button class="btn" data-act="findParks">📍 找附近的公園</button>';
+  if (st === 'loading') return '<p class="note">正在找附近的公園…</p>';
+  if (st === 'nogps') return '<p class="note">取得不到位置。請在瀏覽器設定中允許「位置」，或到戶外再試一次。</p><button class="btn ghost" data-act="findParks">再試一次</button>';
+  if (!st.length) return '<p class="note">附近 1.2 公里內找不到公園，或網路不穩。可以直接開始散步，走到喜歡的地方再按「在這裡打卡」。</p>';
+  return st.map((p, i) => `<button class="park ${run.walkDest === p ? 'on' : ''}" data-dest="${i}"><b>${esc(p.name)}</b><span>約 ${p.m} 公尺・走路約 ${walkMinutes(p.m)} 分鐘</span></button>`).join('')
+    + (run.walkDest ? '<button class="tour-link" data-dest="none">不設目的地</button>' : '');
+}
+
+async function loadParks() {
+  run.parkState = 'loading'; $('#parkList').innerHTML = parkListHTML();
+  const pos = await getPosition().catch(() => null);
+  run.parkState = pos ? await findParks(pos) : 'nogps';
+  if ($('#parkList')) $('#parkList').innerHTML = parkListHTML();
+}
+
+// 散步中的方向提示：距離、方位；到達 40 公尺內自動打卡
+function updateGuide(last) {
+  const d = run.walkInfo?.dest, el = $('#guide');
+  if (!d || !el || !last) return;
+  const m = Math.round(meters(last, [d.lat, d.lng]));
+  if (!run.walkInfo.arrived && m <= 40) {
+    run.walkInfo.arrived = true;
+    const r = checkin({ name: d.name.slice(0, 12), lat: d.lat, lng: d.lng });
+    el.innerHTML = `<b>🎉 到了「${esc(d.name)}」！</b><span>已經幫你打卡${r.unlockedKapok ? '，解鎖了木棉花' : ''}。休息一下再回家吧。</span>`;
+    speak(`到了${d.name}！已經幫你打卡。先找地方坐下休息一下。`);
+    queueEncounter('checkin'); return;
+  }
+  if (run.walkInfo.arrived) return;
+  el.innerHTML = `<b>往「${esc(d.name)}」</b><span>還有約 ${m} 公尺・方向：${bearingText(last, [d.lat, d.lng])}方</span>`;
+}
 
 screens.walking = () => {
   page('散步中', `
@@ -694,6 +734,8 @@ screens.walking = () => {
       <div><b id="wtime">0:00</b><span>時間</span></div>
       <div><b id="wwater">0</b><span>次澆水</span></div>
     </div>
+    ${run.walkInfo?.dest ? `<div id="guide" class="guide"><b>往「${esc(run.walkInfo.dest.name)}」</b><span>正在取得位置…</span></div>
+      ${run.walkInfo.demo ? '' : `<a class="tour-link" href="${gmapsWalkURL(run.walkInfo.dest)}" target="_blank" rel="noopener">需要路線導航？用 Google 地圖開啟（切換過去時，這裡的距離會暫停記錄）</a>`}` : ''}
     <p id="walkMsg" class="note"></p>
     <div id="encounter"></div>
     <div class="grid2">
@@ -704,7 +746,9 @@ screens.walking = () => {
   `, { tab: 'walk' });
   if (run.walk) { run.walk.attach($('#map')); return; }
   const ctl = createWalk($('#map'), {
-    onUpdate: ({ km, seconds }) => {
+    onUpdate: ({ km, seconds, last }) => {
+      updateGuide(last);
+      const wm = $('#walkMsg'); if (last && wm && /GPS|定位/.test(wm.textContent)) wm.textContent = ''; // 收到位置後清除先前的提示
       const k = $('#wkm'); if (!k) return;
       k.textContent = km.toFixed(2);
       $('#wtime').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -717,6 +761,7 @@ screens.walking = () => {
     onError: m => { const el = $('#walkMsg'); if (el) el.textContent = m; },
   });
   run.walk = ctl;
+  if (run.walkInfo.dest) ctl.setDest(run.walkInfo.dest);
   run.walkInfo.demo ? ctl.startDemo() : ctl.startReal();
   speak(run.walkInfo.demo ? '開始模擬散步。' : '開始散步囉！慢慢走，注意安全。');
 };
@@ -732,6 +777,7 @@ function stopWalk() {
   const after = S.get().garden.plots.map(p => p.stage);
   const grown = after.findIndex((s, i) => s !== before[i]);
   const waiting = (run.pendingSpirits || []).length;
+  run.walkDest = null; run.parkState = null;
   run.lastWalk = { km: out.km, minutes: out.minutes, flowers: out.flowers, friends: [], at: new Date().toISOString() };
   run.lastReward = { walk: true, title: `散步 ${out.km.toFixed(2)} 公里，完成！`, detail: `路上開了 ${out.flowers} 朵花${waiting ? `，有 ${waiting} 隻葉靈跟著你回來` : ''}。${grown >= 0 ? `也幫花園澆了 ${r.water} 次水。` : `存了 ${r.water} 次水，種新植物時會用上。`}`, grown };
   go('afterMood');
@@ -1221,13 +1267,15 @@ const actions = {
   pose: togglePose,
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
+  findParks: loadParks,
   walkReal: () => {
-    run.walkInfo = { demo: false };
+    run.walkInfo = { demo: false, dest: run.walkDest || null };
     if (needsCompanion('walk')) { run.companionNext = ['walking']; return go('companion'); }
     go('walking');
   },
   walkCheck: () => { run.afterCheck = 'walk'; run.checkIdx = 0; run.checkAns = {}; go('check'); },
-  walkDemo: () => { run.walkInfo = { demo: true }; go('walking'); },
+  // 示範散步：沿高醫附近的示範路線，終點設為示範公園，讓「導引＋到達打卡」完整展示
+  walkDemo: () => { const r = C.DEMO_ROUTE; run.walkInfo = { demo: true, dest: { name: '示範小公園', lat: r[7][0], lng: r[7][1] } }; go('walking'); },
   walkStop: stopWalk,
   checkin: doCheckin,
   shareLive: async () => {
@@ -1287,6 +1335,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.chip) return sendChat(d.chip);
+  if (d.dest) { run.walkDest = d.dest === 'none' ? null : run.parkState[Number(d.dest)]; return screens.walk(); }
   if (d.moodq) {
     S.setMood(d.moodq);
     run.homeToast = C.MOODS.find(m => m.id === d.moodq).reply + ' 心靈湖畔開了一朵心情之花。';
