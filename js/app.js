@@ -44,7 +44,7 @@ function setFont() {
 }
 
 // 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
-const NO_LINE = ['welcome', 'setupWith', 'screening', 'screenResult', 'check', 'companion', 'help', 'stopToday'];
+const NO_LINE = ['welcome', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday'];
 function lineHeaderBtn() {
   if (NO_LINE.includes(currentScreen)) return '';
   if (!C.lineReady()) return `<button class="line-top" data-go="chat" aria-label="跟小夥伴聊聊">${icon('chat')}<span>聊聊</span></button>`;
@@ -53,7 +53,7 @@ function lineHeaderBtn() {
 
 function header(title, { back = null } = {}) {
   return `<header class="top">
-    ${back ? `<button class="icon-btn" data-go="${back}" aria-label="回上一頁">${icon('back')}</button>` : `<button class="brand" data-go="today" aria-label="回首頁">${brandMark(42)}</button>`}
+    ${back ? `<button class="icon-btn" ${back.startsWith('act:') ? `data-act="${back.slice(4)}"` : `data-go="${back}"`} aria-label="回上一頁">${icon('back')}</button>` : `<button class="brand" data-go="today" aria-label="回首頁">${brandMark(42)}</button>`}
     <h1>${esc(title)}</h1>
     ${lineHeaderBtn()}
     <button class="help-btn" data-act="help">不舒服</button>
@@ -65,7 +65,7 @@ const TAB_OF = { activities: 'forest', walk: 'forest', garden: 'oasis', week: 'o
 function nav(active) {
   active = TAB_OF[active] || active;
   const items = [['today', '首頁', 'home'], ['lake', '心靈湖畔', 'lake'], ['forest', '活力森林', 'forest'], ['knowledge', '知識花園', 'book'], ['oasis', '我的綠洲', 'tree']];
-  return `<nav class="tabs" aria-label="主要選單">${items.map(([id, label, ic]) =>
+  return `<nav class="tabs" aria-label="主要選單"><button class="tab-settings" data-go="settings">${icon('gear')}<span>設定</span></button>${items.map(([id, label, ic]) =>
     `<button data-go="${id}" class="${active === id ? 'on' : ''}" ${active === id ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></button>`).join('')}</nav>`;
 }
 
@@ -82,12 +82,12 @@ function inAppBanner() {
   </div>`;
 }
 
-export const APP_VERSION = 'v10.3（2026-11-06）';
+export const APP_VERSION = 'v10.4（2026-11-06）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
   today: 'home', lake: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
-  forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', companion: 'forest', afterMood: 'forest', walk: 'forest', walking: 'forest', stopToday: 'forest',
+  forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', checkSummary: 'forest', companion: 'forest', afterMood: 'forest', walk: 'forest', walking: 'forest', stopToday: 'forest',
   knowledge: 'knowledge', card: 'knowledge',
   oasis: 'oasis', garden: 'oasis', week: 'oasis', reward: 'oasis', postcard: 'oasis', settings: 'oasis',
 };
@@ -165,7 +165,8 @@ screens.screening = () => {
       <button class="btn choice soft" data-ans="unsure">不確定</button>
     </div>
     <p class="note">這些問題參考國際常用的身體活動準備問卷改寫，只用來挑選適合的活動，不是醫療診斷。</p>
-  `, { back: i === 0 ? 'setupWith' : null });
+    ${i > 0 ? '<button class="btn ghost" data-act="screenPrev">← 回上一題</button>' : ''}
+  `, { back: i === 0 ? 'setupWith' : 'act:screenPrev' });
   speak(q);
 };
 
@@ -376,9 +377,32 @@ screens.check = () => {
       <button class="btn choice soft" data-check="unsure">不確定</button>
     </div>
     <p class="note">${i === 0 ? '回答「有」或「不確定」，今天就先休息，不做運動。' : '回答「不確定」，今天就只提供坐著做的溫和活動。'}</p>
-  `, { back: 'today' });
+    ${i > 0 ? '<button class="btn ghost" data-act="checkPrev">← 回上一題</button>' : ''}
+  `, { back: i > 0 ? 'act:checkPrev' : (run.afterCheck === 'walk' ? 'walk' : 'today') });
   speak(c.q);
 };
+
+// 確認回答：送出前可以逐題修改
+screens.checkSummary = () => {
+  const a = run.checkAns;
+  const label = (c, v) => v === 'yes' ? c.yes : v === 'no' ? c.no : '不確定';
+  const rows = C.DAILY_CHECK.filter(c => a[c.id]).map((c, i) => `<div class="sum-row"><div><p class="sum-q">${esc(c.q)}</p><p class="sum-a">你的回答：<b>${label(c, a[c.id])}</b></p></div><button class="btn small" data-editcheck="${C.DAILY_CHECK.indexOf(c)}">修改</button></div>`).join('');
+  const stop = a.chest && a.chest !== 'no';
+  const preview = stop ? '依照這個回答，今天會先休息，不做運動。' : (a.pain !== 'no' || a.ready !== 'yes') ? '依照這些回答，今天會先做坐著的溫和活動。' : '依照這些回答，今天可以做坐著或扶椅的活動，也可以散步。';
+  page('確認你的回答', `
+    <p class="progress">送出前，看看有沒有選錯</p>
+    <div class="sum-list">${rows}</div>
+    <div class="q-card ${stop ? 'warn' : ''}"><p class="q">${preview}</p>${sayBtn(preview)}</div>
+    ${stop ? '<p class="note">如果真的有胸悶、胸痛或頭暈，請好好休息；嚴重時請撥打 119。只有按錯時才需要修改。</p>' : ''}
+    <button class="btn primary big" data-act="confirmCheck">沒問題，送出</button>
+  `, { back: 'act:checkPrevFromSummary' });
+  speak('送出前，看看有沒有選錯。' + preview);
+};
+
+// 重新回答今天的確認：按錯、或已經換好鞋子時使用
+function redoLink(from = '') {
+  return `<button class="btn soft redo" data-act="redoCheck" data-from="${from}">剛剛選錯，或已經準備好了？重新回答今天的問題</button>`;
+}
 
 function finishCheck() {
   const a = run.checkAns, s = S.get();
@@ -398,6 +422,7 @@ screens.stopToday = () => {
     <a class="btn danger" href="tel:${C.EMERGENCY.medical}">撥打 119</a>
     ${contactButtons()}
     <button class="btn ghost" data-go="oasis">看看我的綠洲就好</button>
+    ${redoLink()}
   `, { back: 'today' });
   speak(msg);
 };
@@ -437,6 +462,8 @@ screens.activities = () => {
     : assisted ? '坐著的活動可以自己做；扶著椅子的活動請在有人陪同時進行。' : '今天可以做坐著或扶著椅子的活動。';
   page('活力森林', `${banner}
     <p class="lead-note">${lead}</p>
+    ${seatedOnly && effectiveLevel() !== 'seated' ? redoLink() : ''}
+    ${seatedOnly && t.mood === 'tired' ? '<button class="tour-link" data-act="changeMood">心情好一點了嗎？更改今天的心情</button>' : ''}
     <div class="ex-list">${list}</div>
     <section class="card walk-cta"><h3 class="card-title">${icon('walk')} 出門散步</h3><p>沿路開花、遇見葉靈，也幫花園澆水。</p><button class="btn big" data-go="walk">準備出門</button></section>
     <button class="text-link" data-card="warning-signs">${icon('book')} 活動時，哪些訊號要停下來？</button>
@@ -664,6 +691,7 @@ screens.walk = () => {
     page('出門散步', `
       <div class="q-card"><p class="q">${why}</p>${sayBtn(why)}</div>
       ${t.allowed === 'none' ? '' : '<button class="btn primary" data-go="activities">去做坐著的活動</button>'}
+      ${redoLink('walk')}
       <button class="tour-link" data-act="walkDemo">示範散步（室內示範用，不需定位）</button>
     `, { tab: 'walk' });
     return;
@@ -1097,6 +1125,7 @@ screens.oasis = () => {
   const tree = treeInfo(), got = S.earnedBadges(), w = S.weekStats();
   const g = S.get().garden;
   page('我的綠洲', `
+    <button class="btn ghost settings-entry" data-go="settings">${icon('gear')} 設定與個人資料（稱呼、聯絡人、重新回答）</button>
     <section class="tree-card">
       ${treeOfLife(tree.stage, { size: 260 })}
       <h2>生命之樹：${tree.name}</h2>
@@ -1159,36 +1188,56 @@ async function sendHelp(kind) {
 
 // ---------- 設定 ----------
 screens.settings = () => {
-  const p = S.get().profile;
-  page('設定', `
-    <label class="field">我的稱呼<input id="sname" type="text" maxlength="12" value="${esc(p.name)}"></label>
-    <h2>字的大小</h2>
-    <div class="answer-row four">${[[1, '100%'], [1.25, '125%'], [1.5, '150%'], [2, '200%']].map(([v, l]) => `<button class="btn choice ${p.fontScale === v ? 'on' : ''}" data-font="${v}" aria-pressed="${p.fontScale === v}">${l}</button>`).join('')}</div>
-    <label class="switch"><input type="checkbox" data-act="toggleSimple" ${p.simple ? 'checked' : ''}><span>簡易模式（首頁只顯示三個大按鈕）</span></label>
-    <label class="switch"><input type="checkbox" data-act="toggleVoice" ${p.voice ? 'checked' : ''}><span>語音朗讀</span></label>
-    <button class="btn ghost" data-act="testVoice">測試聲音</button>
-    <p id="voiceMsg" class="note"></p>
-    <h2>家人聯絡電話</h2>
-    ${p.contacts.map((c, i) => `<div class="contact-row"><span>${esc(c.name)}　${esc(c.phone)}</span><button class="btn small" data-delcontact="${i}">刪除</button></div>`).join('')}
-    ${p.contacts.length < 3 ? `<label class="field">稱呼<input id="cname" type="text" maxlength="12"></label>
-    <label class="field">電話<input id="cphone" type="tel" inputmode="tel" maxlength="15"></label>
-    <button class="btn" data-act="addContact">新增聯絡人</button>` : ''}
-    <button class="btn primary" data-act="saveSettings">儲存</button>
-    <div class="panel">
+  const p = S.get().profile, t = S.get().today;
+  const msg = run.settingsMsg; run.settingsMsg = null;
+  const label = (c, v) => v === 'yes' ? c.yes : v === 'no' ? c.no : '不確定';
+  const todayText = !t.allowed ? '今天還沒回答活動前的 3 個問題。'
+    : { none: '今天先休息，不做運動。', seated: '今天只做坐著的溫和活動。', standard: '今天可以做坐姿、扶椅活動與散步。' }[t.allowed];
+  page('設定與個人資料', `
+    ${msg ? `<div class="saved" role="status">✓ ${esc(msg)}</div>` : ''}
+    <section class="panel">
+      <h2>我的稱呼</h2>
+      <div class="inline-form"><input id="sname" type="text" maxlength="12" value="${esc(p.name)}" aria-label="我的稱呼" placeholder="例如：林阿姨"><button class="btn small" data-act="saveName">儲存</button></div>
+    </section>
+    <section class="panel">
+      <h2>今天的狀況</h2>
+      <p>${todayText}</p>
+      ${t.check ? `<ul class="rules">${C.DAILY_CHECK.filter(c => t.check[c.id]).map(c => `<li>${esc(c.q)} <b>${label(c, t.check[c.id])}</b></li>`).join('')}</ul>` : ''}
+      ${t.mood ? `<p class="note">今天心情：${C.MOODS.find(m => m.id === t.mood).face} ${C.MOODS.find(m => m.id === t.mood).label}</p>` : ''}
+      <div class="grid2"><button class="btn" data-act="redoCheck">重新回答今天的問題</button><button class="btn" data-go="mood">更改今天的心情</button></div>
+    </section>
+    <section class="panel">
+      <h2>家人聯絡電話</h2>
+      ${p.contacts.length ? p.contacts.map((c, i) => `<div class="contact-row"><span>${esc(c.name)}　${esc(c.phone)}</span><button class="btn small" data-delcontact="${i}">刪除</button></div>`).join('') : '<p class="note">還沒有設定。按「不舒服」時，會顯示這裡的電話。</p>'}
+      ${p.contacts.length < 3 ? `<label class="field">稱呼<input id="cname" type="text" maxlength="12" placeholder="例如：女兒 小婷"></label>
+      <label class="field">電話<input id="cphone" type="tel" inputmode="tel" maxlength="15" placeholder="0912345678"></label>
+      <button class="btn" data-act="addContact">新增聯絡人</button>` : '<p class="note">最多 3 位聯絡人。</p>'}
+    </section>
+    <section class="panel">
       <h2>健康小問題</h2>
       <p>${{ seated: '目前只開放坐姿活動。', assisted: '扶椅活動與散步需有人陪同。', standard: '坐姿、扶椅活動與散步都可以。' }[effectiveLevel()]}</p>
       ${p.screening.at ? `<p class="note">上次回答：${new Date(p.screening.at).toLocaleDateString('zh-TW')}${p.screening.cleared ? '（已由專業人員確認）' : ''}</p>` : ''}
       <button class="btn ghost" data-act="redoScreening">重新回答健康小問題</button>
       ${p.screening.level === 'seated' && !p.screening.cleared ? '<button class="btn ghost" data-act="clearByStaff">專業人員確認後開放（請由醫師或據點人員操作）</button>' : ''}
-    </div>
-    <div class="panel">
-      <h2>關於資料</h2>
+    </section>
+    <section class="panel">
+      <h2>字的大小與聲音</h2>
+      <div class="answer-row four">${[[1, '100%'], [1.25, '125%'], [1.5, '150%'], [2, '200%']].map(([v, l]) => `<button class="btn choice ${p.fontScale === v ? 'on' : ''}" data-font="${v}" aria-pressed="${p.fontScale === v}">${l}</button>`).join('')}</div>
+      <label class="switch"><input type="checkbox" data-act="toggleSimple" ${p.simple ? 'checked' : ''}><span>簡易模式（首頁只顯示三個大按鈕）</span></label>
+      <label class="switch"><input type="checkbox" data-act="toggleVoice" ${p.voice ? 'checked' : ''}><span>語音朗讀</span></label>
+      <button class="btn ghost" data-act="testVoice">測試聲音</button>
+      <p id="voiceMsg" class="note"></p>
+    </section>
+    <section class="panel">
+      <h2>資料</h2>
       <p class="note">目前是訪客模式，所有紀錄只存在這支手機的瀏覽器裡，不會上傳。</p>
+      <button class="btn ghost" data-act="clearToday">清除今天的心情與回答（重新開始今天）</button>
+      <button class="btn ghost danger-text" data-act="reset">清除所有資料，從頭開始</button>
       <button class="tour-link" data-act="demo">瀏覽示範旅程（以一週範例資料體驗完整功能）</button>
       <p class="note">目前版本：${APP_VERSION}</p>
-      <button class="btn ghost danger-text" data-act="reset">清除所有資料</button>
-    </div>
+    </section>
   `, { back: 'today' });
+  if (msg) speak(msg);
 };
 
 function readContact() {
@@ -1268,6 +1317,21 @@ const actions = {
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
   findParks: loadParks,
+  checkPrev: () => { run.checkEditing = false; run.checkIdx = Math.max(0, run.checkIdx - 1); go('check'); },
+  checkPrevFromSummary: () => { run.checkIdx = run.checkAns.chest && run.checkAns.chest !== 'no' ? 0 : C.DAILY_CHECK.length - 1; run.checkEditing = false; go('check'); },
+  confirmCheck: () => finishCheck(),
+  changeMood: () => go('mood'),
+  screenPrev: () => { run.screenIdx = Math.max(0, run.screenIdx - 1); go('screening'); },
+  redoCheck: e => {
+    const t = S.get().today;
+    // 回答過胸悶胸痛頭暈的人，只在「按錯」時才重新回答
+    if (t.allowed === 'none' && !confirm('只有在剛剛按錯時才重新回答。\n如果真的有胸悶、胸痛或頭暈，今天請好好休息。\n確定要重新回答嗎？')) return;
+    t.check = null; t.allowed = null; S.save();
+    run.checkIdx = 0; run.checkAns = {};
+    run.afterCheck = e.target.closest('[data-from]')?.dataset.from === 'walk' ? 'walk' : null;
+    go('check');
+  },
+  fofRedo: () => { const f = S.get().fof; if (f.length && S.dayKey(f[f.length - 1].at) === S.dayKey()) { f.pop(); S.save(); } screens.fof(); },
   walkReal: () => {
     run.walkInfo = { demo: false, dest: run.walkDest || null };
     if (needsCompanion('walk')) { run.companionNext = ['walking']; return go('companion'); }
@@ -1291,8 +1355,19 @@ const actions = {
   testVoice: () => { speak('你好，我是心動小夥伴，聽得到我的聲音嗎？', { force: true }); $('#voiceMsg').textContent = voiceStatus(); },
   toggleVoice: e => { S.get().profile.voice = e.target.checked; S.save(); },
   toggleSimple: e => { S.get().profile.simple = e.target.checked; S.save(); },
-  addContact: () => { readContact(); S.save(); screens.settings(); },
-  saveSettings: () => { S.get().profile.name = $('#sname').value.trim(); readContact(); S.save(); go('today'); },
+  addContact: () => {
+    const n = $('#cname')?.value.trim(), ph = $('#cphone')?.value.replace(/[^\d+]/g, '');
+    if (!n || !ph || ph.length < 8) { run.settingsMsg = null; alert('請輸入稱呼和正確的電話號碼。'); return; }
+    readContact(); S.save(); run.settingsMsg = `已新增聯絡人：${n}`; screens.settings();
+  },
+  saveName: () => { S.get().profile.name = $('#sname').value.trim(); S.save(); run.settingsMsg = '稱呼已儲存'; screens.settings(); },
+  clearToday: () => {
+    if (!confirm('清除今天的心情和活動前回答？活動紀錄和花園都會保留。')) return;
+    const s = S.get(), k = S.dayKey();
+    s.moods = s.moods.filter(m => S.dayKey(m.at) !== k);
+    s.today = { date: k, mood: null, check: null, allowed: null }; S.save();
+    run.settingsMsg = '今天的心情和回答已清除，可以重新開始'; screens.settings();
+  },
   redoScreening: () => go('setupWith'),
   clearByStaff: () => {
     if (!confirm('這個按鈕請由醫師、物理治療師或據點人員操作。\n確認這位長輩已經過專業評估，可以在有人陪同下做扶椅活動和散步嗎？')) return;
@@ -1315,10 +1390,13 @@ document.addEventListener('click', e => {
   }
   if (d.check) {
     run.checkAns[C.DAILY_CHECK[run.checkIdx].id] = d.check;
-    if (C.DAILY_CHECK[run.checkIdx].id === 'chest' && d.check !== 'no') return finishCheck();
+    // 胸悶胸痛頭暈回答「有／不確定」：其餘題目不用再問，直接到確認頁
+    if (C.DAILY_CHECK[run.checkIdx].id === 'chest' && d.check !== 'no') { run.checkAns = { chest: d.check }; return go('checkSummary'); }
+    if (run.checkEditing) { run.checkEditing = false; return go('checkSummary'); }
     run.checkIdx += 1;
-    return run.checkIdx < C.DAILY_CHECK.length ? go('check') : finishCheck();
+    return run.checkIdx < C.DAILY_CHECK.length ? go('check') : go('checkSummary');
   }
+  if (d.editcheck !== undefined) { run.checkIdx = Number(d.editcheck); run.checkEditing = true; return go('check'); }
   if (d.mood) return showMoodReply(d.mood);
   if (d.activity) {
     if (needsCompanion(d.activity)) { run.companionNext = ['player', d.activity]; return go('companion'); }
@@ -1376,12 +1454,16 @@ document.addEventListener('click', e => {
   if (d.fof) {
     const n = Number(d.fof); S.addFof(n);
     const msg = C.fofReply(n);
-    $('#fofReply').innerHTML = `<div class="bubble bot">${esc(msg)}</div><button class="btn primary" data-go="today">回首頁</button>`;
+    $('#fofReply').innerHTML = `<div class="bubble bot">${esc(msg)}</div><button class="btn primary" data-go="today">回首頁</button><button class="btn ghost" data-act="fofRedo">選錯了，重新選</button>`;
     main().querySelectorAll('.scale-btn').forEach(b => { b.disabled = true; b.classList.toggle('on', b.dataset.fof === d.fof); });
     speak(msg); return;
   }
-  if (d.font) { S.get().profile.fontScale = Number(d.font); S.save(); setFont(); return screens.settings(); }
-  if (d.delcontact) { S.get().profile.contacts.splice(Number(d.delcontact), 1); S.save(); return screens.settings(); }
+  if (d.font) { S.get().profile.fontScale = Number(d.font); S.save(); setFont(); run.settingsMsg = '字的大小已更新'; return screens.settings(); }
+  if (d.delcontact) {
+    const c = S.get().profile.contacts[Number(d.delcontact)];
+    if (!confirm(`刪除聯絡人「${c.name}」？`)) return;
+    S.get().profile.contacts.splice(Number(d.delcontact), 1); S.save(); run.settingsMsg = '聯絡人已刪除'; return screens.settings();
+  }
 });
 
 document.addEventListener('change', e => {
