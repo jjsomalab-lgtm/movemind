@@ -23,7 +23,7 @@ if (ok) {
   // 手機發聲權限：iPhone 只承認 click／touchend 這類「完成的點擊」，touchstart、pointerdown 不算
   // 所以在這兩個事件上解鎖，並且一直嘗試到真的成功發聲為止
   const unlock = () => {
-    if (heard) return;
+    if (heard || IOS) return; // iPhone 不使用無聲解鎖，改由「開啟語音」按鈕直接發聲
     try {
       speechSynthesis.resume();
       const u = new SpeechSynthesisUtterance(' ');
@@ -52,7 +52,10 @@ export function speak(text, { force = false } = {}) {
   const go = () => { try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { /* 忽略 */ } };
   // iPhone：必須在點擊的「同一個瞬間」呼叫 speak，延遲就會被擋 → 沒有正在說話時立刻說
   // Chrome（Android）：cancel 後立刻 speak 常常無聲 → 只有需要打斷時才稍微延遲
-  if (IOS) { speechSynthesis.cancel(); go(); }            // iPhone／iPad：一律同步發聲
+  if (IOS && !heard) {                                   // iPhone 第一次發聲：必須在點擊當下、且前面不能先 cancel
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    go();
+  }
   else if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); timer = setTimeout(go, 80); }
   else go();
 }
@@ -100,4 +103,22 @@ export function speakTest(text) {
     const chk = () => { if (heard) return resolve(true); if (Date.now() - t0 > 2500) return resolve(false); setTimeout(chk, 150); };
     chk();
   });
+}
+
+// iPhone 靜音開關：先播放一段極短的「無聲」音檔，把聲音切到「媒體播放」通道，
+// 讓靜音開關打開時也比較有機會聽到朗讀（需在使用者點擊當下呼叫）
+let mediaUnlocked = false;
+export function unlockMediaChannel() {
+  if (mediaUnlocked) return;
+  try {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    const a = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+    a.setAttribute('playsinline', ''); a.volume = 0.01;
+    const p = a.play(); if (p && p.catch) p.catch(() => {});
+    mediaUnlocked = true;
+  } catch (e) { /* 忽略 */ }
 }

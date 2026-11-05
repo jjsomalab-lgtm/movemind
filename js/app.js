@@ -4,7 +4,7 @@ import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
 import { demoSVG } from './demos.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
-import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest } from './speech.js';
+import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
@@ -100,7 +100,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v10.6（2026-11-06）';
+export const APP_VERSION = 'v10.7（2026-11-06）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -168,6 +168,7 @@ screens.welcome = () => {
     <p class="note">開始之前，有 ${C.SCREENING.length} 個簡單問題，幫我們知道哪些活動適合你。</p>
     <button class="btn primary" data-act="startScreening">好，開始</button>
     <button class="tour-link" data-act="demo">瀏覽示範旅程</button>
+    <p class="ver">版本 ${APP_VERSION}</p>
   `);
   speak('你好！我是心動小夥伴。我會陪你每天動一動，也會幫你照顧一座小花園。');
 };
@@ -1371,8 +1372,10 @@ const actions = {
   helpLine: () => sendHelp('line'),
   helpSms: () => sendHelp('sms'),
   testVoice: () => { speak('你好，我是心動小夥伴，聽得到我的聲音嗎？', { force: true }); $('#voiceMsg').textContent = voiceStatus(); },
-  enableVoice: async () => {
+  enableVoice: async e => {
     run.voiceFail = false;
+    unlockMediaChannel();                 // 先切到媒體通道（同一次點擊）
+    const btn = e?.target?.closest('button'); if (btn && btn.parentElement?.classList.contains('voice-pill')) btn.textContent = '🔊 正在試著說話…';
     const okNow = await speakTest('語音已經開啟了。我是心動小夥伴，接下來我會唸給你聽。');
     if (okNow) { run.voiceDismissed = true; } else { run.voiceFail = true; }
     go(currentScreen);

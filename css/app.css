@@ -551,3 +551,5 @@ html[data-scale="large"] .inline-form, html[data-scale="large"] .sum-row { flex-
 .voice-pill .x { width: 48px; font-size: 1.4rem; color: var(--muted); }
 .voice-help { background: #FBF3E2; border: 2px solid var(--amber); border-radius: 18px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
 .voice-help ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .3rem; }
+
+.ver { text-align: center; font-size: .75rem; color: var(--muted); opacity: .7; margin: 0; }
