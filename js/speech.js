@@ -6,7 +6,8 @@
 import { get } from './store.js';
 
 const ok = 'speechSynthesis' in window;
-let voice = null, unlocked = false, timer = 0;
+let voice = null, unlocked = false, timer = 0, heard = false;
+export const voiceHeard = () => heard; // 手機真的發出過聲音（onstart 觸發）
 
 function pickVoice() {
   if (!ok) return;
@@ -45,6 +46,7 @@ export function speak(text, { force = false } = {}) {
   if (voice) u.voice = voice;
   u.rate = 0.9; // 稍慢，長輩比較聽得清楚
   u.volume = 1;
+  u.onstart = () => { heard = true; };
   timer = setTimeout(() => { speechSynthesis.resume(); speechSynthesis.speak(u); }, 80);
 }
 
@@ -79,5 +81,16 @@ export function listenOnce() {
     r.onerror = () => { if (!done) resolve(null); };
     r.onend = () => { if (!done) resolve(null); };
     try { r.start(); } catch (e) { resolve(null); }
+  });
+}
+
+// 由使用者點擊觸發的測試：2.5 秒內有發聲就回傳 true
+export function speakTest(text) {
+  return new Promise(resolve => {
+    if (!ok) return resolve(false);
+    speak(text, { force: true });
+    const t0 = Date.now();
+    const chk = () => { if (heard) return resolve(true); if (Date.now() - t0 > 2500) return resolve(false); setTimeout(chk, 150); };
+    chk();
   });
 }

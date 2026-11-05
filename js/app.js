@@ -4,7 +4,7 @@ import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
 import { demoSVG } from './demos.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
-import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak } from './speech.js';
+import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
@@ -73,16 +73,34 @@ function nav(active) {
 const UA = navigator.userAgent;
 const IN_LINE = /\bLine\//i.test(UA);
 const IN_APP = IN_LINE || /FBAN|FBAV|Instagram/i.test(UA);
+const IS_IOS = /iPhone|iPad|iPod/i.test(UA), IS_ANDROID = /Android/i.test(UA);
 function inAppBanner() {
   if (!IN_APP) return '';
-  const ext = `${location.origin}${location.pathname}?openExternalBrowser=1${location.hash}`;
+  const base = `${location.host}${location.pathname}`;
+  const ext = `https://${base}?openExternalBrowser=1`;
+  // Android：直接用 Chrome 開啟；iPhone（iOS 17 以上）：直接用 Safari 開啟
+  const android = `intent://${base}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(ext)};end`;
+  const ios = `x-safari-https://${base}`;
   return `<div class="inapp">
-    <p><b>建議改用手機瀏覽器開啟</b><br>在 ${IN_LINE ? 'LINE' : '這個 APP'} 裡面打開，可能沒有聲音、鏡頭和定位也比較不穩。</p>
-    ${IN_LINE ? `<a class="btn primary" href="${ext}">用瀏覽器開啟</a>` : '<p class="note">請按右上角選單，選「用瀏覽器開啟」。</p>'}
+    <p><b>請改用手機瀏覽器開啟</b><br>在 ${IN_LINE ? 'LINE' : '這個 APP'} 裡面打開，沒有語音朗讀，鏡頭和定位也比較不穩。</p>
+    ${IS_ANDROID ? `<a class="btn primary" href="${android}">用 Chrome 開啟</a>` : IS_IOS ? `<a class="btn primary" href="${ios}">用 Safari 開啟</a>` : `<a class="btn primary" href="${ext}">用瀏覽器開啟</a>`}
+    <p class="note">${IS_IOS ? '如果沒有反應：按畫面右下角「⋯」或分享圖示 →「用 Safari 開啟」。' : '如果沒有反應：按右上角「⋮」→「用預設瀏覽器開啟」。'}</p>
   </div>`;
 }
 
-export const APP_VERSION = 'v10.4（2026-11-06）';
+// 語音開關提示：手機規定第一次發聲必須由使用者點擊，所以在首頁放一個「開啟語音」小按鈕
+function voicePill() {
+  if (!canSpeak || IN_APP || !S.get().profile.voice || voiceHeard() || run.voiceDismissed) return '';
+  if (run.voiceFail) return `<div class="voice-help" role="status"><b>🔇 還是沒有聽到聲音嗎？</b><ul>
+    ${IS_IOS ? '<li>iPhone 側邊的<b>靜音開關</b>要撥到「有聲音」（不是橘色）</li>' : ''}
+    <li>按手機側邊的音量鍵，把<b>媒體音量</b>調大</li>
+    ${IS_ANDROID ? '<li>到手機「設定 → 文字轉語音」，確認已安裝<b>中文（臺灣）</b>語音</li>' : ''}
+    <li>確定是用 ${IS_IOS ? 'Safari' : 'Chrome'} 開啟，不是 LINE 裡面</li></ul>
+    <div class="grid2"><button class="btn" data-act="enableVoice">再試一次</button><button class="btn ghost" data-act="dismissVoice">先不用聲音</button></div></div>`;
+  return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
+}
+
+export const APP_VERSION = 'v10.5（2026-11-06）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -105,7 +123,7 @@ function petals(n = 16) {
 
 function page(title, body, { tab = null, back = null } = {}) {
   document.body.dataset.scene = SCENE_OF[currentScreen] || 'home';
-  const banner = ['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '';
+  const banner = (['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '') + (['today', 'welcome'].includes(currentScreen) ? voicePill() : '');
   const homeLink = back && back !== 'today' && !NO_LINE.includes(currentScreen) && currentScreen !== 'walking'
     ? `<button class="btn ghost home-link" data-go="today">${icon('home')} 回首頁</button>` : '';
   main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
@@ -1353,6 +1371,13 @@ const actions = {
   helpLine: () => sendHelp('line'),
   helpSms: () => sendHelp('sms'),
   testVoice: () => { speak('你好，我是心動小夥伴，聽得到我的聲音嗎？', { force: true }); $('#voiceMsg').textContent = voiceStatus(); },
+  enableVoice: async () => {
+    run.voiceFail = false;
+    const okNow = await speakTest('語音已經開啟了。我是心動小夥伴，接下來我會唸給你聽。');
+    if (okNow) { run.voiceDismissed = true; } else { run.voiceFail = true; }
+    go(currentScreen);
+  },
+  dismissVoice: () => { run.voiceDismissed = true; go(currentScreen); },
   toggleVoice: e => { S.get().profile.voice = e.target.checked; S.save(); },
   toggleSimple: e => { S.get().profile.simple = e.target.checked; S.save(); },
   addContact: () => {
@@ -1478,6 +1503,10 @@ document.addEventListener('submit', e => {
 // ---------- 啟動 ----------
 setFont();
 S.ensureToday();
+// 從 LINE 打開時，自動改用手機瀏覽器開啟（LINE 支援 openExternalBrowser=1）
+if (IN_LINE && !/openExternalBrowser=1/.test(location.search)) {
+  location.replace(`${location.origin}${location.pathname}?openExternalBrowser=1${location.hash}`);
+}
 const start = location.hash.slice(1);
 if (start === 'demo') { S.loadDemo(); setFont(); history.replaceState(null, '', location.pathname); go('today'); }
 else if (!S.get().profile.screening.done) go('welcome');
