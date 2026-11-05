@@ -81,7 +81,29 @@ function inAppBanner() {
   </div>`;
 }
 
+export const APP_VERSION = 'v10（2026-11-05）';
+
+// 每個畫面屬於哪個場景：決定背景氛圍與重點色
+const SCENE_OF = {
+  today: 'home', lake: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
+  forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', companion: 'forest', afterMood: 'forest', walk: 'forest', walking: 'forest', stopToday: 'forest',
+  knowledge: 'knowledge', card: 'knowledge',
+  oasis: 'oasis', garden: 'oasis', week: 'oasis', reward: 'oasis', postcard: 'oasis', settings: 'oasis',
+};
+
+// 花瓣飄落：完成、記錄時的小小慶祝（尊重「減少動態效果」設定）
+function petals(n = 16) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div');
+  box.className = 'petals'; box.setAttribute('aria-hidden', 'true');
+  const colors = ['#F4B6C9', '#F3C98B', '#FFFFFF', '#D69B54', '#BFE0C8'];
+  box.innerHTML = Array.from({ length: n }, (_, i) => `<i style="left:${(i * 61) % 100}%;background:${colors[i % colors.length]};animation-delay:${(i % 6) * .12}s;animation-duration:${2.2 + (i % 4) * .3}s"></i>`).join('');
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 3200);
+}
+
 function page(title, body, { tab = null, back = null } = {}) {
+  document.body.dataset.scene = SCENE_OF[currentScreen] || 'home';
   const banner = ['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '';
   const homeLink = back && back !== 'today' && !NO_LINE.includes(currentScreen) && currentScreen !== 'walking'
     ? `<button class="btn ghost home-link" data-go="today">${icon('home')} 回首頁</button>` : '';
@@ -267,23 +289,33 @@ screens.today = () => {
     `, { tab: 'today' });
     return;
   }
+  const heroScene = `<section class="hero-scene">
+      ${livingGarden()}
+      <div class="hero-text">
+        <p class="eyebrow">${brandMark(22)} MoveMind 心動綠洲</p>
+        <h2 class="hero-title">${esc(name)}${title}</h2>
+        <p class="hero-sub">${sub}</p>
+        ${sayBtn(name + title + sub)}
+      </div>
+    </section>`;
   page('首頁', `
     ${s.demo ? '<p class="demo-flag">展示模式：資料為示範用</p>' : ''}
-    ${hero}
-    ${rescreenDue() ? '<button class="btn soft" data-act="redoScreening">已經 3 個月了，請重新回答健康小問題</button>' : ''}
-    ${fofDue() ? '<button class="btn soft" data-go="fof">每週小問題：走路時擔心跌倒嗎？</button>' : ''}
-    <section class="card">
-      <h3 class="card-title">今天的心情</h3>
-      <div class="mood-row-quick">${C.MOODS.map(m => `<button class="mood-chip ${t.mood === m.id ? 'on' : ''}" data-moodq="${m.id}" aria-pressed="${t.mood === m.id}"><span class="face">${m.face}</span>${m.label}</button>`).join('')}</div>
-      ${toast ? `<div class="bubble bot">${esc(toast)}</div>` : '<p class="note">點一下就記錄，心靈湖畔會開一朵心情之花。</p>'}
-      ${t.mood === 'upset' ? `<a class="btn soft" href="tel:${C.EMERGENCY.mental}">想找人說說話：撥打 1925 安心專線</a>` : ''}
-    </section>
-    <section class="task-card">
+    ${heroScene}
+    <section class="task-card float">
       <p class="eyebrow">今日任務</p>
       <h3>${esc(task.title)}</h3>
       <p class="task-what">${esc(task.what)}</p>
       <p>${esc(task.why)}</p>
       <button class="btn primary big" ${task.attr}>${esc(task.btn)}</button>
+    </section>
+    ${rescreenDue() ? '<button class="btn soft" data-act="redoScreening">已經 3 個月了，請重新回答健康小問題</button>' : ''}
+    ${fofDue() ? '<button class="btn soft" data-go="fof">每週小問題：走路時擔心跌倒嗎？</button>' : ''}
+    <div class="home-grid">
+    <section class="card">
+      <h3 class="card-title">今天的心情</h3>
+      <div class="mood-row-quick">${C.MOODS.map(m => `<button class="mood-chip ${t.mood === m.id ? 'on' : ''}" data-moodq="${m.id}" aria-pressed="${t.mood === m.id}"><span class="face">${m.face}</span>${m.label}</button>`).join('')}</div>
+      ${toast ? `<div class="bubble bot">${esc(toast)}</div>` : '<p class="note">點一下就記錄，心靈湖畔會開一朵心情之花。</p>'}
+      ${t.mood === 'upset' ? `<a class="btn soft" href="tel:${C.EMERGENCY.mental}">想找人說說話：撥打 1925 安心專線</a>` : ''}
     </section>
     <button class="oasis-card" data-go="oasis">
       <div class="oasis-pic">${treeOfLife(tree.stage, { size: 120 })}</div>
@@ -303,6 +335,7 @@ screens.today = () => {
       ${lineLink(lineOpener(), '到 LINE 跟小夥伴聊')}
       <button class="btn ghost" data-go="chat">在 APP 裡聊</button>
     </section>
+    </div>
     <button class="text-link" data-go="settings">${icon('gear')} 設定（字的大小、簡易模式、聯絡人）</button>
   `, { tab: 'today' });
 };
@@ -550,6 +583,7 @@ screens.reward = () => {
     <button class="btn" data-go="today">回首頁</button>
   `);
   speak(`${mr || ''}${r.title}${r.detail}${grownText}`);
+  petals();
 };
 
 // ---------- 心動綠洲 ----------
@@ -978,7 +1012,7 @@ function finishBreath(min) {
   const msg = '做得很好！你得到了一滴晨露，已經存進花園，下次植物長大時會用上。';
   $('#breathDone').innerHTML = `<div class="done-card"><span class="big-emoji">💧</span><p>${msg}</p></div>
     <button class="btn primary" data-go="oasis">看看我的綠洲</button><button class="btn" data-go="lake">回心靈湖畔</button>`;
-  speak(msg);
+  speak(msg); petals();
 }
 
 // ---------- 知識花園 ----------
@@ -1105,6 +1139,7 @@ screens.settings = () => {
       <h2>關於資料</h2>
       <p class="note">目前是訪客模式，所有紀錄只存在這支手機的瀏覽器裡，不會上傳。</p>
       <button class="btn ghost" data-act="demo">載入展示資料</button>
+      <p class="note">目前版本：${APP_VERSION}</p>
       <button class="btn ghost danger-text" data-act="reset">清除所有資料</button>
     </div>
   `, { back: 'today' });
@@ -1253,7 +1288,9 @@ document.addEventListener('click', e => {
   if (d.moodq) {
     S.setMood(d.moodq);
     run.homeToast = C.MOODS.find(m => m.id === d.moodq).reply + ' 心靈湖畔開了一朵心情之花。';
-    screens.today(); speak(run.homeToast || ''); return;
+    const said = run.homeToast;
+    screens.today(); speak(said); petals(12);
+    $(`[data-moodq="${d.moodq}"]`)?.classList.add('pop'); return;
   }
   if (d.feel) {
     const f = C.LAKE_FEELINGS.find(x => x.id === d.feel);
@@ -1270,7 +1307,14 @@ document.addEventListener('click', e => {
     const sp = C.SPIRITS.find(s => s.id === d.talk);
     run.talkIdx = (run.talkIdx || 0) + 1;
     const line = sp.talk[run.talkIdx % sp.talk.length];
-    const el = $('#spiritTalk'); if (el) el.innerHTML = `<b>${esc(sp.name)}</b>：${esc(line)}`;
+    const el = t.closest('.hero-scene') ? null : $('#spiritTalk');
+    if (el) el.innerHTML = `<b>${esc(sp.name)}</b>：${esc(line)}`;
+    else { // 首頁場景：在葉靈頭上冒出對話泡泡
+      const gv = t.closest('.garden-view'); gv.querySelector('.talk-pop')?.remove();
+      const pop = document.createElement('div'); pop.className = 'talk-pop'; pop.textContent = `${sp.name}：${line}`;
+      pop.style.left = t.style.left; pop.style.top = t.style.top; gv.appendChild(pop);
+      setTimeout(() => pop.remove(), 4000);
+    }
     t.classList.remove('hop'); void t.offsetWidth; t.classList.add('hop');
     return speak(line, { force: true });
   }
