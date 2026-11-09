@@ -1,23 +1,49 @@
-// 活動示範動畫：原創繪製的動態人形（SVG + SMIL 動畫），不需要網路、不佔空間
+// 活動示範動畫：原創繪製的動態人形（SVG＋JavaScript 平滑動畫），不需要網路、不佔空間
 // 動作依活動口令繪製，僅為示意；正式示範影片需由專業人員確認動作標準後拍攝（見 docs/SPEC.md）
 
 const C = { near: '#2F7D57', far: '#9CCB9F', head: '#2F7D57', prop: '#C9B79C', line: '#CFDCCB' };
 const pts = a => a.map(p => p.join(',')).join(' ');
 
-// frames：同一條線在不同時間點的座標；自動做成循環動畫
+// frames：同一條線在不同時間點的座標。改用 JavaScript 逐格平滑插值（Catmull-Rom 曲線），
+// 比 SMIL 動畫更順，iPhone 上也一樣流暢。
 function line(frames, { color = C.near, w = 9, dur = 3, begin = 0 } = {}) {
-  const vals = frames.map(pts);
-  const anim = frames.length > 1
-    ? `<animate attributeName="points" dur="${dur}s" begin="${begin}s" repeatCount="indefinite" values="${[...vals, vals[0]].join(';')}" calcMode="spline" keySplines="${Array(vals.length).fill('.45 0 .55 1').join(';')}" keyTimes="${[...vals, 0].map((_, i) => (i / vals.length).toFixed(3)).join(';')}"/>`
-    : '';
-  return `<polyline fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" points="${vals[0]}">${anim}</polyline>`;
+  const data = frames.length > 1 ? ` data-frames='${JSON.stringify(frames)}' data-dur="${dur}" data-begin="${begin}" data-kind="line"` : '';
+  return `<polyline fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" points="${pts(frames[0])}"${data}></polyline>`;
 }
 function head(frames, { dur = 3, begin = 0, r = 12 } = {}) {
-  const anim = k => frames.length > 1
-    ? `<animate attributeName="${k}" dur="${dur}s" begin="${begin}s" repeatCount="indefinite" values="${[...frames, frames[0]].map(f => f[k === 'cx' ? 0 : 1]).join(';')}" calcMode="spline" keySplines="${Array(frames.length).fill('.45 0 .55 1').join(';')}" keyTimes="${[...frames, 0].map((_, i) => (i / frames.length).toFixed(3)).join(';')}"/>`
-    : '';
-  return `<circle r="${r}" cx="${frames[0][0]}" cy="${frames[0][1]}" fill="${C.head}">${anim('cx')}${anim('cy')}</circle>`;
+  const data = frames.length > 1 ? ` data-frames='${JSON.stringify(frames.map(f => [f]))}' data-dur="${dur}" data-begin="${begin}" data-kind="head"` : '';
+  return `<circle r="${r}" cx="${frames[0][0]}" cy="${frames[0][1]}" fill="${C.head}"${data}></circle>`;
 }
+
+// ---------- 平滑動畫引擎 ----------
+const cr = (p0, p1, p2, p3, t) => { const t2 = t * t, t3 = t2 * t; return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3); };
+const ease = t => (1 - Math.cos(Math.PI * t)) / 2;
+function sample(F, phase) {
+  const n = F.length, x = phase * n, i = Math.floor(x) % n, f = x - Math.floor(x);
+  if (n === 2) { const e = ease(f), A = F[i], B = F[(i + 1) % n]; return A.map((p, k) => [p[0] + (B[k][0] - p[0]) * e, p[1] + (B[k][1] - p[1]) * e]); }
+  const P0 = F[(i - 1 + n) % n], P1 = F[i], P2 = F[(i + 1) % n], P3 = F[(i + 2) % n];
+  return P1.map((_, k) => [cr(P0[k][0], P1[k][0], P2[k][0], P3[k][0], f), cr(P0[k][1], P1[k][1], P2[k][1], P3[k][1], f)]);
+}
+let running = false;
+export function animateDemos() {
+  if (running || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  running = true;
+  const t0 = performance.now();
+  const tick = now => {
+    const els = document.querySelectorAll('svg.demo:not(.paused) [data-frames]');
+    if (!els.length) { running = false; return; }
+    const t = (now - t0) / 1000;
+    els.forEach(el => {
+      const F = el._f || (el._f = JSON.parse(el.dataset.frames)), dur = +el.dataset.dur, begin = +el.dataset.begin;
+      const phase = (((t - begin) / dur) % 1 + 1) % 1, P = sample(F, phase);
+      if (el.dataset.kind === 'head') { el.setAttribute('cx', P[0][0].toFixed(1)); el.setAttribute('cy', P[0][1].toFixed(1)); }
+      else el.setAttribute('points', P.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+    });
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 const ground = '<line x1="10" y1="182" x2="190" y2="182" stroke="#CFDCCB" stroke-width="3" stroke-linecap="round"/>';
 const chairSide = `<g stroke="${C.prop}" stroke-width="6" stroke-linecap="round" fill="none"><path d="M62 64 L66 124 L122 124"/><path d="M70 124 V182 M118 124 V182"/></g>`;
 const chairFront = `<g fill="${C.prop}" opacity=".55"><rect x="70" y="46" width="60" height="70" rx="8"/><rect x="64" y="110" width="72" height="14" rx="5"/></g><g stroke="${C.prop}" stroke-width="6" stroke-linecap="round"><path d="M70 124 V182 M130 124 V182"/></g>`;
@@ -50,7 +76,7 @@ const DEMOS = {
     + line([sLeg, [[95, 120], [130, 98], [134, 148], [150, 150]]], { dur: 2.4 }),
 
   'arm-circle': () => {
-    const o = [[0, -9], [9, 0], [0, 9], [-9, 0]];
+    const o = Array.from({ length: 8 }, (_, i) => [Math.round(Math.sin(i * Math.PI / 4) * 9), Math.round(-Math.cos(i * Math.PI / 4) * 9)]);
     const L = o.map(([dx, dy]) => [[75, 58], [52 + dx / 2, 58 + dy / 2], [30 + dx, 58 + dy]]);
     const R = o.map(([dx, dy]) => [[125, 58], [148 - dx / 2, 58 + dy / 2], [170 - dx, 58 + dy]]);
     return chairFront + ground + fLegs + line([[[100, 115], [100, 56]]], { w: 12 }) + line([[[75, 58], [125, 58]]], { w: 10 })

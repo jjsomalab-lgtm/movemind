@@ -22,7 +22,8 @@ function pickVoice() {
 }
 
 // 說話風格：寵物可愛（音高略高），但語速接近真人
-const STYLE = { default: { rate: 1.08, pitch: 1.0 }, dog: { rate: 1.1, pitch: 1.18 }, cat: { rate: 1.06, pitch: 1.3 }, turtle: { rate: 0.98, pitch: 0.92 } };
+// 語速接近一般人講話、音調只比原聲高一點點，避免尖銳
+const STYLE = { default: { rate: 0.96, pitch: 1.0 }, dog: { rate: 0.98, pitch: 1.05 }, cat: { rate: 0.96, pitch: 1.08 }, turtle: { rate: 0.9, pitch: 0.97 } };
 
 if (ok) {
   pickVoice();
@@ -159,6 +160,7 @@ export function stopListening() { try { liveRec?.stop(); } catch (e) { /* 忽略
 // 讓長輩看得懂的失敗原因
 export function listenErrorText(err) {
   const ios = IOS;
+  if (ios && (err === 'no-speech' || err === 'empty' || err === 'service-not-allowed' || err === 'audio-capture')) return '這支 iPhone 的網頁語音辨識沒有反應。請改用打字，並按鍵盤左下角的🎤用說的（需在「設定 → 一般 → 鍵盤」開啟「啟用聽寫」）。';
   return {
     'not-allowed': ios ? '需要麥克風權限：請到 iPhone「設定 → Safari → 麥克風」選「允許」，再重新整理。' : '需要麥克風權限：請點網址列左邊的鎖頭，把「麥克風」改成允許。',
     'service-not-allowed': '這支 iPhone 的「聽寫」沒有開：請到「設定 → 一般 → 鍵盤」，打開「啟用聽寫」。',

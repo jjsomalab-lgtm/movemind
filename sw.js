@@ -1,6 +1,6 @@
 // 心動力 AI｜Service Worker：讓 APP 在網路不穩時也能打開
 // 更新程式後，請把 VERSION 數字加 1，手機才會換成新版本。
-const VERSION = 'mm-v11-3';
+const VERSION = 'mm-v11-4';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/app.js', './js/store.js', './js/content.js', './js/garden.js', './js/speech.js', './js/walk.js', './js/share.js', './js/pose.js', './js/demos.js', './js/art.js', './js/places.js', './js/pet.js', './js/petsound.js', './js/room.js', './js/weather.js', './js/meditate.js', './js/reminders.js',

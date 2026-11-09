@@ -2,7 +2,7 @@
 import * as S from './store.js';
 import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
-import { demoSVG } from './demos.js';
+import { demoSVG, animateDemos } from './demos.js';
 import { petSound, suspendAudio } from './petsound.js';
 import { lifeState, growth, SHOP, roomSVG, diaryText } from './room.js';
 import { PETS, CARE, TRICKS, petLine, petSVG, petStats } from './pet.js';
@@ -106,7 +106,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v11.3（2026-11-10）';
+export const APP_VERSION = 'v11.4（2026-11-10）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -154,6 +154,7 @@ function page(title, body, { tab = null, back = null } = {}) {
   main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${reminderPop()}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
   if (!['player', 'walking'].includes(currentScreen) && !run.listening) { const st = $('#roamSay'); if (st && !run.sayingSticky) roamEl().classList.remove('talking'); }
   setTimeout(updateRoam, 0);
+  setTimeout(animateDemos, 0);
   main().querySelector('.body').scrollTop = 0;
   window.scrollTo(0, 0);
 }
@@ -554,7 +555,7 @@ screens.activities = () => {
     <button class="text-link" data-card="warning-signs">${icon('book')} 活動時，哪些訊號要停下來？</button>
   `, { tab: 'activities' });
   // 列表中的示範動畫先暫停，避免太多東西同時在動；進入活動頁才播放
-  main().querySelectorAll('.ex-pic svg').forEach(svg => svg.pauseAnimations?.());
+  main().querySelectorAll('.ex-pic svg').forEach(svg => svg.classList.add('paused'));
 };
 
 // ---------- 有人陪同確認 ----------
@@ -1880,14 +1881,14 @@ function updateRoam() {
   el.hidden = !show; if (!show) return;
   el.classList.toggle('has-tabs', !!main().querySelector('.tabs'));
   const body = el.querySelector('#roamBody'); if (body.dataset.pet !== p.petType) { body.innerHTML = petSVG(p.petType, 76); body.dataset.pet = p.petType; }
-  if (run.lastRoamScreen !== currentScreen) { run.lastRoamScreen = currentScreen; run.petSeed = (run.petSeed || 0) + 1; if (!run.sayingSticky) petSay(petLine(currentScreen, petCall(), run.petSeed), { quiet: true, ms: 4500 }); }
+  if (run.lastRoamScreen !== currentScreen) { run.lastRoamScreen = currentScreen; run.petSeed = (run.petSeed || 0) + 1; if (!run.sayingSticky && !(run.sayUntil > Date.now())) petSay(petLine(currentScreen, petCall(), run.petSeed), { quiet: true, ms: 4500 }); }
 }
 // 夥伴說話：泡泡＋（可選）語音＋（可選）動作按鈕
 function petSay(text, { quiet = false, ms = 6000, actions = '' } = {}) {
   const el = roamEl(); if (el.hidden && !actions) { if (!quiet) speak(text); return; }
   const say = el.querySelector('#roamSay');
   say.innerHTML = `<button class="roam-x" data-need="close" aria-label="收起">×</button><b>${esc(petName())}</b> ${esc(text)}${actions ? `<span class="roam-acts">${actions}</span>` : ''}`;
-  el.classList.add('talking'); clearTimeout(run.sayTimer); run.sayingSticky = !!actions;
+  el.classList.add('talking'); clearTimeout(run.sayTimer); run.sayingSticky = !!actions; run.sayUntil = Date.now() + ms;
   if (!actions) run.sayTimer = setTimeout(() => { el.classList.remove('talking'); }, ms);
   if (!quiet) petVoice(text);
 }
@@ -1902,8 +1903,11 @@ async function petVoice(text) {
 }
 function petQuiet() { const el = roamEl(); el.classList.remove('talking'); run.sayingSticky = false; }
 
-async function talkToPet() {
+async function talkToPet(force = false) {
   if (run.listening) { stopListening(); return; }
+  // 這支手機的網頁語音辨識失敗過：直接打開打字框，並提示用鍵盤上的麥克風（iPhone 的聽寫比較穩）
+  const fails = run.voiceFails || Number(sessionStorage.getItem('mm-voice-fail') || 0);
+  if (!force && fails >= 1) { petType(); return; }
   if (!canListen) { petType(); return; }
   suspendAudio(); stopSpeaking();
   run.listening = true; roamEl().classList.add('listening');
@@ -1911,7 +1915,8 @@ async function talkToPet() {
   const r = await listenTap({ onInterim: t => { const s = $('#roamSay'); if (s) s.innerHTML = `<b>${esc(petName())}</b> 🎙️ ${esc(t)}…`; } });
   run.listening = false; roamEl().classList.remove('listening');
   if (r.text) { petQuiet(); if (currentScreen !== 'chat') go('chat'); sendChat(r.text); return; }
-  petSay(listenErrorText(r.error), { quiet: true, actions: '<button data-need="retalk">再說一次</button><button data-need="type">改用打字</button>' });
+  run.voiceFails = (run.voiceFails || 0) + 1; try { sessionStorage.setItem('mm-voice-fail', String(run.voiceFails)); } catch (e) { /* 忽略 */ }
+  petSay(`${listenErrorText(r.error)}（代碼：${r.error}）`, { quiet: true, actions: '<button data-need="retalk">再說一次</button><button data-need="type">改用打字</button>' });
 }
 
 // 在泡泡裡直接打字跟寵物說話（提示：也可以按鍵盤上的麥克風用說的）
@@ -1926,7 +1931,7 @@ function greetOwner() {
   const h = new Date().getHours(), hi = h < 11 ? '早安' : h < 18 ? '午安' : '晚安';
   const w = run.weatherAdvice ? `${run.weatherAdvice.icon} ${run.weatherAdvice.text}` : '今天想跟我一起做什麼呢？';
   petSay(`${petCall()}${hi}！好想你喔～${w}`, { ms: 8000 });
-  setTimeout(() => { if (!run.sayingSticky && !run.listening) questOffer(); }, 45000);
+  setTimeout(() => { run.questOffered = true; if (!run.listening) questOffer(); }, 45000);
 }
 
 // 點畫面其他地方、或滑動網頁時，自動收起泡泡（聽話中、或有按鈕的重要訊息除外）
@@ -1970,7 +1975,7 @@ const NEEDS = {
 };
 function maybeNeed(force = false) {
   const s = S.get(), p = s.pet, el = roamEl();
-  if (!s.profile.petType || el.hidden || run.listening || run.sayingSticky || document.hidden || $('.rem-pop')) return;
+  if (!s.profile.petType || el.hidden || run.listening || run.sayingSticky || document.hidden || $('.rem-pop') || !run.questOffered) return;
   const today = S.dayKey(), log = (p.needs || []).filter(x => x.d === today);
   if (!force && (log.length >= 8 || Date.now() - (p.lastNeed || 0) < 15 * 60000 || Math.random() > 0.4)) return;
   const h = new Date().getHours(), t = s.today;
@@ -1992,7 +1997,7 @@ document.addEventListener('click', e => {
   if (k === 'type') { petType(); return; }
   if (k === 'quest') { startWalkQuest(); return; }
   if (k === 'stoplisten') { stopListening(); return; }
-  if (k === 'retalk') { talkToPet(); return; }
+  if (k === 'retalk') { talkToPet(true); return; }
   if (k === 'drink') {
     s.drinks = s.drinks || []; s.drinks.push({ at: new Date().toISOString() }); S.save();
     petSay(`咕嚕咕嚕～好好喝！謝謝${petCall()}，你也喝到了嗎？`, { ms: 5000 }); petals(8); return;
