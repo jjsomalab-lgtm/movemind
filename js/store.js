@@ -21,6 +21,7 @@ const blank = () => ({
   },
   pet: { treats: 0, spent: 0, bonus: 0, love: 0, needsToday: 0, needsDate: '' },   // 心動夥伴：點心數、用掉的點數、小願望獎勵、親密度
   meditations: [],         // 靜坐 { at, minutes }
+  petDiary: [],            // 寵物日記 { at, text }
   reminders: [],           // 生活提醒 { id, kind, label, time }
   reminderLog: {},         // { '2026-11-09_r1': 'done' | 'later' }
   today: { date: '', mood: null, check: null, allowed: null },
@@ -43,7 +44,7 @@ function load() {
     if (!raw) return blank();
     const s = JSON.parse(raw);
     const b = blank();
-    return { ...b, ...s, profile: { ...b.profile, ...s.profile }, garden: { ...b.garden, ...s.garden }, today: { ...b.today, ...s.today }, pet: { ...b.pet, ...(s.pet || {}) } };
+    return { ...b, ...s, profile: { ...b.profile, ...s.profile }, garden: { ...b.garden, ...s.garden }, today: { ...b.today, ...s.today }, pet: { ...b.pet, ...(s.pet || {}) }, petDiary: s.petDiary || [] };
   } catch (e) {
     return blank();
   }
@@ -129,7 +130,11 @@ export function loadDemo() {
   state.profile.screening = { done: true, level: 'standard', flags: [], at: new Date().toISOString(), cleared: false, setupWith: 'yes' };
   state.profile.contacts = [{ name: '女兒 小婷', phone: '0900000000' }];
   state.profile.petType = 'dog'; state.profile.petCall = '林阿姨'; state.profile.county = '高雄市';
-  state.pet = { treats: 4, spent: 4, bonus: 0, love: 6, needsToday: 0, needsDate: '' };
+  state.pet = { treats: 4, spent: 4, bonus: 6, love: 6, needsToday: 0, needsDate: '', items: ['rug', 'plant'] };
+  state.petDiary = [
+    { at: new Date(Date.now() - 2 * 864e5).toISOString(), text: '今天林阿姨帶我走了 1.1 公里，路上聞到好香的花！' },
+    { at: new Date(Date.now() - 864e5).toISOString(), text: '林阿姨陪我做了「坐姿抬腿」，我跟著數數，好開心！' },
+  ];
   state.reminders = [{ id: 'rdemo1', kind: 'med', label: '血壓藥（示範）', time: '08:00' }, { id: 'rdemo2', kind: 'water', label: '喝一口水', time: '10:00' }, { id: 'rdemo3', kind: 'move', label: '起來動一動', time: '15:00' }];
   const moods = ['ok', 'tired', 'good', 'ok', 'good', 'good'];
   const plan = [['seated-knee', 'home', 10], ['walk', 'walk', 0.8], ['seated-march', 'home', 20], ['sit-to-stand', 'home', 8], ['walk', 'walk', 1.1], ['arm-circle', 'home', 10]];

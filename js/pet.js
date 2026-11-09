@@ -49,41 +49,58 @@ export function petLine(screen, call, seed = 0) {
   return list[seed % list.length].replaceAll('{call}', call || '你');
 }
 
-// ---------- 原創造型 ----------
+// ---------- 原創造型：美式卡通風（粗描邊、大眼睛、會眨眼、會搖尾巴） ----------
+const OL = '#3B2A20'; // 描邊色
 export function petSVG(type, size = 96, { mood = 'happy' } = {}) {
-  const eyes = mood === 'calm'
-    ? '<path d="M36 50 q5 -4 10 0 M54 50 q5 -4 10 0" stroke="#2B2420" stroke-width="3" fill="none" stroke-linecap="round"/>'
-    : '<circle cx="41" cy="50" r="4.2" fill="#2B2420"/><circle cx="59" cy="50" r="4.2" fill="#2B2420"/><circle cx="42.4" cy="48.4" r="1.4" fill="#fff"/><circle cx="60.4" cy="48.4" r="1.4" fill="#fff"/>';
-  const blush = '<ellipse cx="33" cy="60" rx="5" ry="3" fill="#F59A92" opacity=".55"/><ellipse cx="67" cy="60" rx="5" ry="3" fill="#F59A92" opacity=".55"/>';
-  let body = '';
+  const eye = (cx, cy, r = 7.5) => mood === 'calm'
+    ? `<path d="M${cx - 6} ${cy} q6 -5 12 0" stroke="${OL}" stroke-width="3.2" fill="none" stroke-linecap="round"/>`
+    : `<g class="pt-eye"><ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r * 1.15}" fill="#fff" stroke="${OL}" stroke-width="2.6"/><ellipse cx="${cx + 1}" cy="${cy + 1.5}" rx="${r * .58}" ry="${r * .7}" fill="${OL}"/><circle cx="${cx + 2.6}" cy="${cy - 1.8}" r="${r * .28}" fill="#fff"/></g>`;
+  const cheeks = (y) => `<ellipse cx="30" cy="${y}" rx="5.5" ry="3.4" fill="#FF8F86" opacity=".6"/><ellipse cx="70" cy="${y}" rx="5.5" ry="3.4" fill="#FF8F86" opacity=".6"/>`;
+  const S = `stroke="${OL}" stroke-width="3" stroke-linejoin="round"`;
+  let art = '';
   if (type === 'dog') {
-    body = `<ellipse cx="50" cy="96" rx="26" ry="5" fill="#000" opacity=".12"/>
-      <path d="M78 74 q16 -8 10 -22 q-2 10 -12 12z" fill="#C98B4A"/>
-      <ellipse cx="50" cy="78" rx="24" ry="17" fill="#D9A15F"/><ellipse cx="50" cy="82" rx="13" ry="10" fill="#F3DDB8"/>
-      <rect x="32" y="84" width="9" height="12" rx="4" fill="#C98B4A"/><rect x="59" y="84" width="9" height="12" rx="4" fill="#C98B4A"/>
-      <path d="M24 34 L30 10 L44 30Z" fill="#B87A3C"/><path d="M76 34 L70 10 L56 30Z" fill="#B87A3C"/>
-      <circle cx="50" cy="50" r="27" fill="#D9A15F"/><ellipse cx="50" cy="62" rx="15" ry="11" fill="#F3DDB8"/>
-      <ellipse cx="50" cy="57" rx="5" ry="3.6" fill="#2B2420"/><path d="M45 64 q5 5 10 0" stroke="#2B2420" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    art = `<ellipse cx="50" cy="97" rx="24" ry="4" fill="#000" opacity=".14"/>
+      <g class="pt-tail" style="transform-origin:72px 78px"><path d="M72 80 q18 -6 16 -24 q-8 4 -6 12 q-4 8 -14 8z" fill="#D9963F" ${S}/></g>
+      <path d="M28 96 q-2 -26 22 -28 q24 2 22 28z" fill="#E8A24F" ${S}/><ellipse cx="50" cy="86" rx="11" ry="9" fill="#FFF1DA"/>
+      <ellipse cx="36" cy="95" rx="7" ry="4.5" fill="#E8A24F" ${S}/><ellipse cx="64" cy="95" rx="7" ry="4.5" fill="#E8A24F" ${S}/>
+      <g class="pt-head" style="transform-origin:50px 64px">
+        <path d="M20 40 L22 6 L42 26z" fill="#D9963F" ${S}/><path d="M80 40 L78 6 L58 26z" fill="#D9963F" ${S}/><path d="M25 32 L26 15 L36 26z" fill="#F7C9B8"/><path d="M75 32 L74 15 L64 26z" fill="#F7C9B8"/>
+        <ellipse cx="50" cy="44" rx="30" ry="27" fill="#E8A24F" ${S}/>
+        <ellipse cx="50" cy="56" rx="17" ry="12" fill="#FFF1DA" stroke="${OL}" stroke-width="2"/>
+        ${eye(38, 40)}${eye(62, 40)}
+        <ellipse cx="50" cy="50" rx="6" ry="4.2" fill="${OL}"/><circle cx="48" cy="48.6" r="1.4" fill="#fff"/>
+        <path d="M43 57 q7 6 14 0" stroke="${OL}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <path d="M47 59 q3 9 6 0z" fill="#FF7B7B" stroke="${OL}" stroke-width="2"/>${cheeks(54)}
+      </g>`;
   } else if (type === 'cat') {
-    const stripes = '<path d="M38 26 q12 4 24 0 M36 32 q14 5 28 0" stroke="#8A5A2E" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>';
-    body = `<ellipse cx="50" cy="96" rx="24" ry="5" fill="#000" opacity=".12"/>
-      <path d="M74 86 q22 2 16 -22 q-4 8 -16 12z" fill="#D89A55"/>
-      <ellipse cx="50" cy="80" rx="22" ry="16" fill="#E6AE6A"/><ellipse cx="50" cy="84" rx="12" ry="9" fill="#FBEBD3"/>
-      <path d="M26 36 L28 12 L44 28Z" fill="#E6AE6A"/><path d="M74 36 L72 12 L56 28Z" fill="#E6AE6A"/>
-      <path d="M30 32 L31 18 L40 28Z" fill="#F7B9B3"/><path d="M70 32 L69 18 L60 28Z" fill="#F7B9B3"/>
-      <circle cx="50" cy="50" r="26" fill="#E6AE6A"/>${stripes}<ellipse cx="50" cy="61" rx="13" ry="9" fill="#FBEBD3"/>
-      <path d="M47 57 L53 57 L50 60Z" fill="#E07A7A"/><path d="M50 60 q-4 5 -8 2 M50 60 q4 5 8 2" stroke="#2B2420" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M30 60 L18 57 M30 63 L18 65 M70 60 L82 57 M70 63 L82 65" stroke="#8A5A2E" stroke-width="1.5"/>`;
+    art = `<ellipse cx="50" cy="97" rx="22" ry="4" fill="#000" opacity=".14"/>
+      <g class="pt-tail" style="transform-origin:70px 88px"><path d="M70 90 q26 0 20 -30 q-2 -6 -6 -2 q4 22 -14 24z" fill="#F0A955" ${S}/></g>
+      <path d="M30 96 q-2 -24 20 -26 q22 2 20 26z" fill="#F0A955" ${S}/><ellipse cx="50" cy="87" rx="10" ry="8" fill="#FFF3E2"/>
+      <ellipse cx="38" cy="95" rx="6.5" ry="4" fill="#F0A955" ${S}/><ellipse cx="62" cy="95" rx="6.5" ry="4" fill="#F0A955" ${S}/>
+      <g class="pt-head" style="transform-origin:50px 64px">
+        <path d="M22 36 L22 8 L44 24z" fill="#F0A955" ${S}/><path d="M78 36 L78 8 L56 24z" fill="#F0A955" ${S}/><path d="M26 28 L26 15 L36 24z" fill="#FFB8B0"/><path d="M74 28 L74 15 L64 24z" fill="#FFB8B0"/>
+        <ellipse cx="50" cy="44" rx="30" ry="26" fill="#F0A955" ${S}/>
+        <path d="M40 22 q10 5 20 0 M37 29 q13 6 26 0" stroke="#B86F2A" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="50" cy="55" rx="14" ry="9" fill="#FFF3E2" stroke="${OL}" stroke-width="2"/>
+        ${eye(37, 42, 8)}${eye(63, 42, 8)}
+        <path d="M46 51 L54 51 L50 55z" fill="#FF7B8A" stroke="${OL}" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M50 55 q-3 5 -7 2 M50 55 q3 5 7 2" stroke="${OL}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M24 52 L10 49 M24 56 L10 58 M76 52 L90 49 M76 56 L90 58" stroke="${OL}" stroke-width="1.8" stroke-linecap="round"/>${cheeks(54)}
+      </g>`;
   } else {
-    body = `<ellipse cx="50" cy="96" rx="30" ry="5" fill="#000" opacity=".12"/>
-      <ellipse cx="22" cy="86" rx="8" ry="6" fill="#8FC48A"/><ellipse cx="78" cy="86" rx="8" ry="6" fill="#8FC48A"/>
-      <path d="M14 80 Q50 40 86 80 Q50 92 14 80Z" fill="#5E9C6A"/>
-      <path d="M30 70 L40 58 L60 58 L70 70 L50 78Z M24 78 L30 70 M76 78 L70 70" stroke="#3E7A4E" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
-      <circle cx="50" cy="44" r="22" fill="#8FC48A"/><ellipse cx="50" cy="54" rx="12" ry="7" fill="#B8DDB0"/>
-      <path d="M44 56 q6 5 12 0" stroke="#2B2420" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
-    return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${body}${eyes.replace(/cy="50"/g, 'cy="44"').replace(/48\.4/g, '42.4').replace(/q5 -4 10 0/g, 'q5 -4 10 0')}${blush.replace(/cy="60"/g, 'cy="52"')}</svg>`;
+    art = `<ellipse cx="50" cy="97" rx="30" ry="4" fill="#000" opacity=".14"/>
+      <ellipse cx="22" cy="90" rx="8" ry="6" fill="#9CD08F" ${S}/><ellipse cx="78" cy="90" rx="8" ry="6" fill="#9CD08F" ${S}/>
+      <path d="M12 86 Q50 36 88 86 Q50 96 12 86Z" fill="#5FA867" ${S}/>
+      <path d="M32 74 L42 60 L58 60 L68 74 L50 82Z" fill="#7DBE76" stroke="#2F6B3A" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="M22 82 L32 74 M78 82 L68 74 M50 82 L50 90" stroke="#2F6B3A" stroke-width="2.6"/>
+      <g class="pt-head" style="transform-origin:50px 60px">
+        <ellipse cx="50" cy="40" rx="24" ry="22" fill="#9CD08F" ${S}/>
+        ${eye(41, 37, 7)}${eye(59, 37, 7)}
+        <path d="M43 50 q7 6 14 0" stroke="${OL}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="46" rx="5" ry="3" fill="#FF8F86" opacity=".6"/><ellipse cx="70" cy="46" rx="5" ry="3" fill="#FF8F86" opacity=".6"/>
+      </g>`;
   }
-  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${body}${eyes}${blush}</svg>`;
+  return `<svg class="pet-svg pet-${type}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true" overflow="visible">${art}</svg>`;
 }
 
 // 依所剩點數與累積點心數，計算可以吃的點心與已學會的把戲

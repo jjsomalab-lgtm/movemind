@@ -143,8 +143,10 @@ export function listenTap({ onInterim } = {}) {
     const fin = r => { if (done) return; done = true; liveRec = null; resolve(r); };
     try {
       const r = new Rec(); liveRec = r;
-      r.lang = 'zh-TW'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
-      r.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; text = t; gotSpeech = true; onInterim?.(t); };
+      r.lang = 'zh-TW'; r.interimResults = true; r.continuous = IOS; r.maxAlternatives = 1;
+      let silence = 0;
+      r.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; text = t; gotSpeech = true; onInterim?.(t);
+        clearTimeout(silence); silence = setTimeout(() => { try { r.stop(); } catch (er) { /* 忽略 */ } }, 1800); };
       r.onerror = e => fin(text.trim() ? { text: text.trim() } : { error: e.error || 'unknown' });
       r.onend = () => fin(text.trim() ? { text: text.trim() } : { error: gotSpeech ? 'empty' : 'no-speech' });
       r.start();
@@ -174,3 +176,9 @@ export function listVoices() {
   return speechSynthesis.getVoices().filter(v => /^zh/i.test(v.lang)).map(v => ({ name: v.name, lang: v.lang }));
 }
 export const refreshVoice = () => pickVoice();
+
+// 正在說話嗎？（給寵物排隊用，避免系統提示和寵物互搶）
+export const isSpeaking = () => ok && (speechSynthesis.speaking || speechSynthesis.pending);
+export function whenIdle(maxMs = 15000) {
+  return new Promise(res => { const t0 = Date.now(); const chk = () => (!isSpeaking() || Date.now() - t0 > maxMs) ? res() : setTimeout(chk, 200); chk(); });
+}
