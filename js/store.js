@@ -14,9 +14,12 @@ const blank = () => ({
     shareRoute: false,     // 是否保存完整散步路線（預設只存距離與時間）
     petType: null,         // 'dog' | 'cat' | 'turtle'
     petCall: '',           // 寵物怎麼稱呼主人，例如「阿嬤」
+    petName: '',           // 主人幫寵物取的名字（空白＝預設名字）
+    voiceName: '',         // 使用者選的朗讀聲音
+    petFloat: true,        // 寵物在畫面上自由走動
     county: '',            // 所在縣市（用來查天氣，不用 GPS）
   },
-  pet: { treats: 0, spent: 0 },   // 心動夥伴：吃過的點心數、用掉的點數
+  pet: { treats: 0, spent: 0, bonus: 0, love: 0, needsToday: 0, needsDate: '' },   // 心動夥伴：點心數、用掉的點數、小願望獎勵、親密度
   meditations: [],         // 靜坐 { at, minutes }
   reminders: [],           // 生活提醒 { id, kind, label, time }
   reminderLog: {},         // { '2026-11-09_r1': 'done' | 'later' }
@@ -126,7 +129,7 @@ export function loadDemo() {
   state.profile.screening = { done: true, level: 'standard', flags: [], at: new Date().toISOString(), cleared: false, setupWith: 'yes' };
   state.profile.contacts = [{ name: '女兒 小婷', phone: '0900000000' }];
   state.profile.petType = 'dog'; state.profile.petCall = '林阿姨'; state.profile.county = '高雄市';
-  state.pet = { treats: 4, spent: 4 };
+  state.pet = { treats: 4, spent: 4, bonus: 0, love: 6, needsToday: 0, needsDate: '' };
   state.reminders = [{ id: 'rdemo1', kind: 'med', label: '血壓藥（示範）', time: '08:00' }, { id: 'rdemo2', kind: 'water', label: '喝一口水', time: '10:00' }, { id: 'rdemo3', kind: 'move', label: '起來動一動', time: '15:00' }];
   const moods = ['ok', 'tired', 'good', 'ok', 'good', 'good'];
   const plan = [['seated-knee', 'home', 10], ['walk', 'walk', 0.8], ['seated-march', 'home', 20], ['sit-to-stand', 'home', 8], ['walk', 'walk', 1.1], ['arm-circle', 'home', 10]];

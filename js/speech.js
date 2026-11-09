@@ -10,12 +10,19 @@ const IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform
 let voice = null, unlocked = false, timer = 0, heard = false;
 export const voiceHeard = () => heard; // 手機真的發出過聲音（onstart 觸發）
 
+// 挑選較自然的臺灣華語語音：優先「加強版／高品質」，其次 Google，再其次任何 zh-TW
 function pickVoice() {
   if (!ok) return;
   const vs = speechSynthesis.getVoices();
-  voice = vs.find(v => v.lang === 'zh-TW') || vs.find(v => /zh[-_]TW|Taiwan/i.test(v.lang + v.name))
-    || vs.find(v => v.lang.startsWith('zh')) || null;
+  const tw = vs.filter(v => v.lang === 'zh-TW' || /zh[-_]TW|Taiwan|臺灣|台灣/i.test(v.lang + v.name));
+  // 越自然的語音分數越高：Edge 的 Natural／Online（例：HsiaoChen）、iPhone 的高品質／加強版、Google
+  const score = v => (/Natural|Neural|Online/i.test(v.name) ? 6 : 0) + (/Premium|高品質/i.test(v.name) ? 5 : 0) + (/Enhanced|加強/i.test(v.name) ? 4 : 0) + (/Google/i.test(v.name) ? 2 : 0) + (v.localService ? 0 : 1);
+  const chosen = get().profile.voiceName && vs.find(v => v.name === get().profile.voiceName);
+  voice = chosen || tw.sort((a, b) => score(b) - score(a))[0] || vs.find(v => v.lang.startsWith('zh')) || null;
 }
+
+// 說話風格：寵物可愛（音高略高），但語速接近真人
+const STYLE = { default: { rate: 1.08, pitch: 1.0 }, dog: { rate: 1.1, pitch: 1.18 }, cat: { rate: 1.06, pitch: 1.3 }, turtle: { rate: 0.98, pitch: 0.92 } };
 
 if (ok) {
   pickVoice();
@@ -43,10 +50,13 @@ export function speak(text, { force = false } = {}) {
   if (!force && !get().profile.voice) return;
   clearTimeout(timer);
   if (!voice) pickVoice();
+  text = String(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/[～~]/g, '，'); // 不唸表情符號；「～」改成自然停頓
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'zh-TW';
   if (voice) u.voice = voice;
-  u.rate = 0.9; // 稍慢，長輩比較聽得清楚
+  const st = STYLE[get().profile.petType] || STYLE.default;
+  const slow = get().profile.slowVoice ? 0.85 : 1;       // 設定裡可以選「說慢一點」
+  u.rate = st.rate * slow; u.pitch = st.pitch;
   u.volume = 1;
   u.onstart = () => { heard = true; };
   const go = () => { try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { /* 忽略 */ } };
@@ -123,22 +133,44 @@ export function unlockMediaChannel() {
   } catch (e) { /* 忽略 */ }
 }
 
-// 按住說話：按下時開始辨識，放開時停止並回傳整段文字
-let holdRec = null, holdText = '';
-export function holdStart() {
-  if (!Rec) return false;
-  try {
-    holdText = ''; holdRec = new Rec(); holdRec.lang = 'zh-TW'; holdRec.continuous = true; holdRec.interimResults = true;
-    holdRec.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; holdText = t; };
-    holdRec.start(); return true;
-  } catch (e) { holdRec = null; return false; }
-}
-export function holdStop() {
+// 點一下就開始聽，說完自動停止（比「按住不放」更適合長輩）；回傳 { text } 或 { error }
+let liveRec = null;
+export function listenTap({ onInterim } = {}) {
   return new Promise(resolve => {
-    if (!holdRec) return resolve(holdText.trim() || null);
-    const r = holdRec; holdRec = null;
-    let done = false; const fin = () => { if (done) return; done = true; resolve(holdText.trim() || null); };
-    r.onend = fin; r.onerror = fin; setTimeout(fin, 1500);
-    try { r.stop(); } catch (e) { fin(); }
+    if (!Rec) return resolve({ error: 'unsupported' });
+    stopSpeaking(); // 夥伴正在說話時會干擾麥克風，先停下來
+    let text = '', done = false, gotSpeech = false;
+    const fin = r => { if (done) return; done = true; liveRec = null; resolve(r); };
+    try {
+      const r = new Rec(); liveRec = r;
+      r.lang = 'zh-TW'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+      r.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; text = t; gotSpeech = true; onInterim?.(t); };
+      r.onerror = e => fin(text.trim() ? { text: text.trim() } : { error: e.error || 'unknown' });
+      r.onend = () => fin(text.trim() ? { text: text.trim() } : { error: gotSpeech ? 'empty' : 'no-speech' });
+      r.start();
+      setTimeout(() => { try { r.stop(); } catch (e) { /* 忽略 */ } }, 12000); // 最多聽 12 秒
+    } catch (e) { fin({ error: 'start-failed' }); }
   });
 }
+export function stopListening() { try { liveRec?.stop(); } catch (e) { /* 忽略 */ } }
+
+// 讓長輩看得懂的失敗原因
+export function listenErrorText(err) {
+  const ios = IOS;
+  return {
+    'not-allowed': ios ? '需要麥克風權限：請到 iPhone「設定 → Safari → 麥克風」選「允許」，再重新整理。' : '需要麥克風權限：請點網址列左邊的鎖頭，把「麥克風」改成允許。',
+    'service-not-allowed': '這支 iPhone 的「聽寫」沒有開：請到「設定 → 一般 → 鍵盤」，打開「啟用聽寫」。',
+    'no-speech': '我沒聽到聲音耶～靠近手機一點，點我之後直接說就好。',
+    'empty': '聽到聲音了，但沒聽清楚，再說一次好嗎？',
+    'network': '語音辨識需要網路，請確認網路後再試一次。',
+    'audio-capture': '找不到麥克風，請確認沒有其他 APP 正在使用麥克風。',
+    'unsupported': '這個瀏覽器不能用說的，請改用打字，或用手機鍵盤上的麥克風。',
+  }[err] || '這次沒聽清楚，再試一次，或改用打字也可以。';
+}
+
+// 可選的中文語音清單（設定頁讓使用者挑最順耳的聲音）
+export function listVoices() {
+  if (!ok) return [];
+  return speechSynthesis.getVoices().filter(v => /^zh/i.test(v.lang)).map(v => ({ name: v.name, lang: v.lang }));
+}
+export const refreshVoice = () => pickVoice();

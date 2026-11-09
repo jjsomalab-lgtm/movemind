@@ -3,12 +3,13 @@ import * as S from './store.js';
 import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
 import { demoSVG } from './demos.js';
+import { petSound } from './petsound.js';
 import { PETS, CARE, TRICKS, petLine, petSVG, petStats } from './pet.js';
 import { PLACES, getWeather, advise } from './weather.js';
 import { startMusic, stopMusic, GUIDE } from './meditate.js';
 import { KINDS, dueReminders, logKey, icsFor } from './reminders.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
-import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, holdStart, holdStop } from './speech.js';
+import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, listenTap, stopListening, listenErrorText, listVoices, refreshVoice } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
@@ -104,7 +105,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v11.0（2026-11-09）';
+export const APP_VERSION = 'v11.1（2026-11-09）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -127,9 +128,10 @@ function petals(n = 16) {
 
 // 心動夥伴：每一頁都在，依畫面說不同的話；點寵物進小屋；按住麥克風跟牠說話
 const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday'];
-function petName() { const t = S.get().profile.petType; return t ? PETS[t].name : '小夥伴'; }
+function petName() { const p = S.get().profile; return p.petType ? (p.petName || PETS[p.petType].name) : '小夥伴'; }
 function petCall() { const p = S.get().profile; return p.petCall || p.name || '你'; }
-function petBar() {
+function petBar() { return ''; }
+function petBarOld() {
   const p = S.get().profile;
   if (!p.petType || NO_PET.includes(currentScreen)) return '';
   run.petSeed = (run.petSeed || 0) + 1;
@@ -148,7 +150,9 @@ function page(title, body, { tab = null, back = null } = {}) {
   const banner = (['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '') + (['today', 'welcome'].includes(currentScreen) ? voicePill() : '');
   const homeLink = back && back !== 'today' && !NO_LINE.includes(currentScreen) && currentScreen !== 'walking'
     ? `<button class="btn ghost home-link" data-go="today">${icon('home')} 回首頁</button>` : '';
-  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${reminderPop()}${petBar()}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
+  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${reminderPop()}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
+  if (!['player', 'walking'].includes(currentScreen) && !run.listening) { const st = $('#roamSay'); if (st && !run.sayingSticky) roamEl().classList.remove('talking'); }
+  setTimeout(updateRoam, 0);
   main().querySelector('.body').scrollTop = 0;
   window.scrollTo(0, 0);
 }
@@ -201,7 +205,10 @@ screens.petPick = () => {
   page('選一個夥伴', `
     <p class="lead">誰要陪你每天動一動呢？</p>
     <div class="pet-pick">${Object.entries(PETS).map(([k, v]) => `<button class="pet-card ${sel === k ? 'on' : ''}" data-pickpet="${k}">${petSVG(k, 84)}<b>${v.name}</b><span>${v.kind}</span><small>${v.trait}</small></button>`).join('')}</div>
-    <label class="field">${sel ? esc(PETS[sel].name) : '牠'}要怎麼叫你？
+    <label class="field">幫牠取個名字（可以用預設的）
+      <input id="petNameIn" type="text" maxlength="8" placeholder="${sel ? esc(PETS[sel].name) : '例如：小黑、咪寶'}" value="${esc(p.petType === sel ? p.petName : '')}">
+    </label>
+    <label class="field">牠要怎麼叫你？
       <input id="petCall" type="text" maxlength="8" placeholder="例如：阿嬤、阿公、林阿姨" value="${esc(p.petCall || p.name)}">
     </label>
     <button class="btn primary big" data-act="petNext">${run.fromSettings ? '儲存' : '下一步'}</button>
@@ -338,13 +345,14 @@ async function refreshWeather() {
   run.weatherLoading = true;
   const w = await getWeather(county); run.weatherLoading = false;
   run.weather = w; run.weatherAdvice = advise(w, petCall());
-  const b = $('#petBubble');
-  if (b && currentScreen === 'today' && run.weatherAdvice) b.innerHTML = `<b>${esc(petName())}</b>　${run.weatherAdvice.icon} ${esc(county)}：${esc(run.weatherAdvice.text)}`;
+  if (currentScreen === 'today' && run.weatherAdvice && !run.greeted) greetOwner();
 }
 
 screens.today = () => {
   S.ensureToday();
   if (!run.weather) setTimeout(refreshWeather, 0);
+  if (!S.get().profile.county) setTimeout(greetOwner, 600);
+  else setTimeout(() => { if (!run.greeted) greetOwner(); }, 3000); // 天氣沒回來也照樣打招呼
   const s = S.get(), t = s.today, w = S.weekStats();
   const name = s.profile.name ? `${s.profile.name}，` : '';
   const title = `${greetWord()}，今天也為自己留一點時間。`;
@@ -1019,7 +1027,7 @@ screens.chat = () => {
     <div class="chips">${C.CHAT_CHIPS.map(c => `<button class="chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <form class="chat-input" data-form="chat">
       <input id="chatText" type="text" maxlength="120" placeholder="想說什麼呢？" aria-label="輸入訊息">
-      ${canListen ? `<button type="button" class="icon-btn hold" data-hold="talk" aria-label="按住說話">${icon('mic')}</button>` : ''}
+      ${canListen ? `<button type="button" class="icon-btn" data-act="talkPet" aria-label="用說的">${icon('mic')}</button>` : ''}
       <button type="submit" class="btn send">送出</button>
     </form>
     ${ai ? lineCard : ''}
@@ -1065,7 +1073,7 @@ async function sendChat(text) {
     if (!safety && mine % 4 === 0) reply += '\n' + C.BRIDGE_LINES[(mine / 4) % C.BRIDGE_LINES.length];
     if (!safety && s.profile.petType) reply = `${PETS[s.profile.petType].sound} ${reply}`;
     pushChat('me', text); pushChat('bot', reply);
-    screens.chat(); speak(reply); chatExtras(flagOf(rule));
+    screens.chat(); (safety ? speak(reply) : petVoice(reply.replace(/^(汪！|喵～|（慢慢點頭）)\s*/, ''))); chatExtras(flagOf(rule));
     return;
   }
 
@@ -1099,7 +1107,7 @@ async function sendChat(text) {
   }
   pushChat('bot', reply);
   if (currentScreen !== 'chat') return;
-  screens.chat(); speak(reply); chatExtras(flag);
+  screens.chat(); (flag === 'crisis' || flag === 'body' ? speak(reply) : petVoice(reply.replace(/^(汪！|喵～|（慢慢點頭）)\s*/, ''))); chatExtras(flag);
 }
 
 // ---------- 心動夥伴的小屋 ----------
@@ -1415,7 +1423,13 @@ screens.settings = () => {
       <h2>字的大小與聲音</h2>
       <div class="answer-row four">${[[1, '100%'], [1.25, '125%'], [1.5, '150%'], [2, '200%']].map(([v, l]) => `<button class="btn choice ${p.fontScale === v ? 'on' : ''}" data-font="${v}" aria-pressed="${p.fontScale === v}">${l}</button>`).join('')}</div>
       <label class="switch"><input type="checkbox" data-act="toggleSimple" ${p.simple ? 'checked' : ''}><span>簡易模式（首頁只顯示三個大按鈕）</span></label>
-      <label class="switch"><input type="checkbox" data-act="toggleVoice" ${p.voice ? 'checked' : ''}><span>語音朗讀</span></label>
+      <label class="switch"><input type="checkbox" data-act="toggleVoice" ${p.voice ? 'checked' : ''}><span>語音朗讀（由夥伴的聲音說）</span></label>
+      <label class="switch"><input type="checkbox" data-act="toggleSlowVoice" ${p.slowVoice ? 'checked' : ''}><span>說話慢一點</span></label>
+      <label class="switch"><input type="checkbox" data-act="togglePetRoam" ${p.petRoam !== false ? 'checked' : ''}><span>夥伴在畫面上走來走去</span></label>
+      <label class="field">朗讀的聲音（挑一個最順耳的）
+        <select id="voicePick" class="big-select" data-act="pickVoice">${[{ name: '', lang: '' }, ...listVoices()].map(v => `<option value="${esc(v.name)}" ${p.voiceName === v.name ? 'selected' : ''}>${v.name ? esc(v.name) + '（' + esc(v.lang) + '）' : '自動挑最自然的'}</option>`).join('')}</select>
+      </label>
+      <p class="note">想要更像真人：iPhone 到「設定 → 輔助使用 → 語音內容 → 聲音 → 中文（臺灣）」下載「加強版」或「高品質」聲音；電腦用 Edge 瀏覽器會有更自然的聲音。</p>
       <button class="btn ghost" data-act="testVoice">測試聲音</button>
       <p id="voiceMsg" class="note"></p>
     </section>
@@ -1493,7 +1507,11 @@ const actions = {
   petNext: () => {
     const p = S.get().profile;
     if (!run.pickPet && !p.petType) { alert('請先選一個夥伴喔！'); return; }
-    p.petType = run.pickPet || p.petType; p.petCall = $('#petCall').value.trim() || p.name || ''; S.save();
+    const changed = run.pickPet && run.pickPet !== p.petType;
+    p.petType = run.pickPet || p.petType; p.petCall = $('#petCall').value.trim() || p.name || '';
+    p.petName = $('#petNameIn').value.trim() || (changed ? '' : p.petName); S.save();
+    const r = roamEl().querySelector('#roamBody'); if (r) r.dataset.pet = '';
+    petSound(p.petType, 2); setTimeout(() => speak(`我是${petName()}！以後請多多指教，${petCall()}！`), voiceHeard() ? 500 : 0);
     go(run.fromSettings ? 'settings' : 'place');
   },
   placeNext: () => { const v = $('#county')?.value || ''; S.get().profile.county = v; S.save(); sessionStorage.removeItem('mm-weather'); run.weatherAdvice = null; go(run.fromSettings ? 'settings' : 'setupWith'); },
@@ -1515,6 +1533,9 @@ const actions = {
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
   findParks: loadParks,
+  talkPet: () => talkToPet(),
+  togglePetRoam: e => { S.get().profile.petRoam = e.target.checked; S.save(); updateRoam(); },
+  toggleSlowVoice: e => { S.get().profile.slowVoice = e.target.checked; S.save(); speak('好的，我會用這個速度說話。', { force: true }); },
   editPet: () => { run.fromSettings = true; run.pickPet = null; go('petPick'); },
   editPlace: () => { run.fromSettings = true; go('place'); },
   feedPet: () => {
@@ -1572,6 +1593,7 @@ const actions = {
   chatVoice: async () => { const t = await listenOnce(); if (t) sendChat(t); },
   helpLine: () => sendHelp('line'),
   helpSms: () => sendHelp('sms'),
+  pickVoice: () => {},
   testVoice: () => { speak('你好，我是心動小夥伴，聽得到我的聲音嗎？', { force: true }); $('#voiceMsg').textContent = voiceStatus(); },
   enableVoice: async e => {
     run.voiceFail = false;
@@ -1642,7 +1664,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.chip) return sendChat(d.chip);
-  if (d.pickpet) { run.pickPet = d.pickpet; screens.petPick(); return speak(`${PETS[d.pickpet].name}：${PETS[d.pickpet].trait}。`); }
+  if (d.pickpet) { run.pickPet = d.pickpet; screens.petPick(); petSound(d.pickpet); return setTimeout(() => speak(`${PETS[d.pickpet].name}：${PETS[d.pickpet].trait}。`), 600); }
   if (d.med) return startMeditation(Number(d.med));
   if (d.medsound) { run.medSound = d.medsound; return screens.meditate(); }
   if (d.remkind) { run.remKind = d.remkind; return screens.reminders(); }
@@ -1707,30 +1729,115 @@ document.addEventListener('change', e => {
   if (t.matches('input[type=checkbox][data-act]')) actions[t.dataset.act]?.(e);
 });
 
+document.addEventListener('change', e => {
+  if (e.target.id === 'voicePick') { S.get().profile.voiceName = e.target.value; S.save(); refreshVoice(); petVoice('這個聲音好聽嗎？'); }
+});
+
 document.addEventListener('submit', e => {
   if (e.target.dataset.form === 'chat') { e.preventDefault(); sendChat($('#chatText').value); }
 });
 
-// ---------- 按住說話：按下開始聽，放開就送給夥伴 ----------
-let holding = null;
-document.addEventListener('pointerdown', e => {
-  const b = e.target.closest('[data-hold="talk"]'); if (!b) return;
-  e.preventDefault();
-  if (!holdStart()) { go('chat'); return; }
-  holding = b; b.classList.add('listening');
-  const bub = $('#petBubble'); if (bub) bub.innerHTML = `<b>${esc(petName())}</b>　🎙️ 我在聽，說完放開就好…`;
-});
-const endHold = async () => {
-  if (!holding) return;
-  const b = holding; holding = null; b.classList.remove('listening');
-  const text = await holdStop();
-  if (!text) { const bub = $('#petBubble'); if (bub) bub.innerHTML = `<b>${esc(petName())}</b>　沒聽清楚，再按住說一次好嗎？`; return; }
-  if (currentScreen !== 'chat') go('chat');
-  sendChat(text);
+// ---------- 自由走動的心動夥伴：點牠就能說話 ----------
+const ROAM_HIDE = [...NO_PET, 'player', 'walking', 'meditate', 'breathe', 'check', 'checkSummary', 'petHome'];
+function roamEl() {
+  let el = document.getElementById('petRoam');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'petRoam';
+    el.innerHTML = '<div class="roam-say" id="roamSay" role="status" aria-live="polite"></div><button class="roam-pet" id="roamPet" aria-label="點我說話"><span class="roam-flip"><span class="roam-bob" id="roamBody"></span></span></button>';
+    document.body.appendChild(el);
+    el.querySelector('#roamPet').addEventListener('click', e => { e.stopPropagation(); talkToPet(); });
+  }
+  return el;
+}
+function updateRoam() {
+  const p = S.get().profile, el = roamEl();
+  const show = p.petType && p.petRoam !== false && !ROAM_HIDE.includes(currentScreen);
+  el.hidden = !show; if (!show) return;
+  el.classList.toggle('has-tabs', !!main().querySelector('.tabs'));
+  const body = el.querySelector('#roamBody'); if (body.dataset.pet !== p.petType) { body.innerHTML = petSVG(p.petType, 76); body.dataset.pet = p.petType; }
+  if (run.lastRoamScreen !== currentScreen) { run.lastRoamScreen = currentScreen; run.petSeed = (run.petSeed || 0) + 1; if (!run.sayingSticky) petSay(petLine(currentScreen, petCall(), run.petSeed), { quiet: true, ms: 4500 }); }
+}
+// 夥伴說話：泡泡＋（可選）語音＋（可選）動作按鈕
+function petSay(text, { quiet = false, ms = 6000, actions = '' } = {}) {
+  const el = roamEl(); if (el.hidden && !actions) { if (!quiet) speak(text); return; }
+  const say = el.querySelector('#roamSay');
+  say.innerHTML = `<b>${esc(petName())}</b> ${esc(text)}${actions ? `<span class="roam-acts">${actions}</span>` : ''}`;
+  el.classList.add('talking'); clearTimeout(run.sayTimer); run.sayingSticky = !!actions;
+  if (!actions) run.sayTimer = setTimeout(() => { el.classList.remove('talking'); }, ms);
+  if (!quiet) petVoice(text);
+}
+// 先發出真的寵物叫聲，再用寵物的聲音說話（語速接近真人）
+function petVoice(text) {
+  const t = S.get().profile.petType;
+  if (!t || !S.get().profile.voice) return speak(text);
+  const d = petSound(t);
+  if (!voiceHeard()) speak(text);                    // iPhone 第一次發聲要在點擊當下，不能延遲
+  else setTimeout(() => speak(text), Math.round(d * 1000));
+}
+function petQuiet() { const el = roamEl(); el.classList.remove('talking'); run.sayingSticky = false; }
+
+async function talkToPet() {
+  if (run.listening) { stopListening(); return; }
+  if (!canListen) { petSay(listenErrorText('unsupported'), { actions: '<button data-go="chat">改用打字</button>' }); return; }
+  run.listening = true; roamEl().classList.add('listening');
+  petSay('我在聽～說完我就知道了！', { quiet: true, actions: '<button data-need="stoplisten">說完了</button>' });
+  const r = await listenTap({ onInterim: t => { const s = $('#roamSay'); if (s) s.innerHTML = `<b>${esc(petName())}</b> 🎙️ ${esc(t)}…`; } });
+  run.listening = false; roamEl().classList.remove('listening');
+  if (r.text) { petQuiet(); if (currentScreen !== 'chat') go('chat'); sendChat(r.text); return; }
+  petSay(listenErrorText(r.error), { actions: '<button data-need="retalk">再說一次</button><button data-go="chat">改用打字</button>' });
+}
+
+// 一打開就跟主人打招呼（每次開啟一次）
+function greetOwner() {
+  if (run.greeted || !S.get().profile.petType) return; run.greeted = true;
+  const h = new Date().getHours(), hi = h < 11 ? '早安' : h < 18 ? '午安' : '晚安';
+  const w = run.weatherAdvice ? `${run.weatherAdvice.icon} ${run.weatherAdvice.text}` : '今天想跟我一起做什麼呢？';
+  petSay(`${petCall()}${hi}！好想你喔～${w}`, { ms: 8000 });
+}
+
+// ---------- 夥伴的小需求：不定時邀約，永遠可以說「等一下」 ----------
+const NEEDS = {
+  hungry: () => petStats(S.get()).points >= 1
+    ? { text: '肚子咕嚕咕嚕叫了～可以給我吃個點心嗎？', acts: '<button data-need="feed">給點心</button><button data-need="later">等一下</button>' }
+    : { text: '肚子有點餓～我們一起動一動，賺點心好嗎？', acts: '<button data-go="activities">一起運動</button><button data-need="later">等一下</button>' },
+  thirsty: () => ({ text: `好渴喔～${petCall()}，我們一起喝口水好不好？`, acts: '<button data-need="drink">一起喝水</button><button data-need="later">等一下</button>' }),
+  walk: () => ({ text: '外面天氣不錯，好想出去散散步～', acts: '<button data-go="walk">帶我去</button><button data-need="later">今天不要</button>' }),
+  stretch: () => ({ text: '坐好久了～我們一起伸個懶腰？', acts: '<button data-go="activities">好啊</button><button data-need="later">等一下</button>' }),
+  chat: () => ({ text: `${petCall()}，今天過得好嗎？點我跟我說說話～`, acts: '<button data-need="retalk">跟你說</button><button data-need="later">等一下</button>' }),
 };
-document.addEventListener('pointerup', endHold);
-document.addEventListener('pointercancel', endHold);
-document.addEventListener('contextmenu', e => { if (e.target.closest('[data-hold]')) e.preventDefault(); });
+function maybeNeed(force = false) {
+  const s = S.get(), p = s.pet, el = roamEl();
+  if (!s.profile.petType || el.hidden || run.listening || run.sayingSticky || document.hidden || $('.rem-pop')) return;
+  const today = S.dayKey(), log = (p.needs || []).filter(x => x.d === today);
+  if (!force && (log.length >= 8 || Date.now() - (p.lastNeed || 0) < 15 * 60000 || Math.random() > 0.4)) return;
+  const h = new Date().getHours(), t = s.today;
+  const pool = ['thirsty', 'hungry', 'chat'];
+  if (t.allowed !== 'none') pool.push('stretch');
+  if (t.allowed === 'standard' && h >= 7 && h < 18 && (!run.weatherAdvice || run.weatherAdvice.outdoor === 'good')) pool.push('walk');
+  const k = pool[Math.floor(Math.random() * pool.length)], n = NEEDS[k]();
+  p.lastNeed = Date.now(); p.needs = [...log, { d: today, k }]; S.save();
+  petSay(n.text, { actions: n.acts });
+}
+setInterval(() => maybeNeed(), 45000);
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-need]'); if (!b) return;
+  e.stopPropagation();
+  const k = b.dataset.need, s = S.get();
+  if (k === 'later') { petSay('好～那我們等一下再說！', { ms: 3000 }); return; }
+  if (k === 'stoplisten') { stopListening(); return; }
+  if (k === 'retalk') { talkToPet(); return; }
+  if (k === 'drink') {
+    s.drinks = s.drinks || []; s.drinks.push({ at: new Date().toISOString() }); S.save();
+    petSay(`咕嚕咕嚕～好好喝！謝謝${petCall()}，你也喝到了嗎？`, { ms: 5000 }); petals(8); return;
+  }
+  if (k === 'feed') {
+    const st = petStats(s); if (st.points < 1) { petSay('點數不夠了～我們一起動一動賺點心！', { actions: '<button data-go="activities">一起運動</button>' }); return; }
+    s.pet.spent += 1; s.pet.treats += 1; S.save();
+    const learned = TRICKS.find(t => t.at === s.pet.treats);
+    petSay(learned ? `好好吃！${PETS[s.profile.petType].sound} 我學會「${learned.name}」了！` : `好好吃！謝謝${petCall()}！${PETS[s.profile.petType].sound}`, { ms: 5000 }); petals(10);
+  }
+}, true);
 
 // 每分鐘檢查一次提醒：到時間就在頁面最上方出現寵物提醒
 setInterval(() => {

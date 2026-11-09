@@ -44,6 +44,7 @@ const LINES = {
   mood: ['今天心情怎麼樣？跟我說說。'],
 };
 export function petLine(screen, call, seed = 0) {
+  // 開頭問候另外處理
   const list = LINES[screen] || LINES.today;
   return list[seed % list.length].replaceAll('{call}', call || '你');
 }
@@ -88,6 +89,9 @@ export function petSVG(type, size = 96, { mood = 'happy' } = {}) {
 // 依所剩點數與累積點心數，計算可以吃的點心與已學會的把戲
 export function petStats(state) {
   const p = state.pet || { treats: 0, spent: 0 };
-  const earned = state.sessions.length * 2 + state.breaths.length + (state.meditations || []).length + state.moods.length;
+  // 喝水每天最多算 4 點，避免一直按
+  const byDay = {}; (state.drinks || []).forEach(d => { const k = d.at.slice(0, 10); byDay[k] = Math.min(4, (byDay[k] || 0) + 1); });
+  const drinkPts = Object.values(byDay).reduce((x, y) => x + y, 0);
+  const earned = state.sessions.length * 2 + state.breaths.length + (state.meditations || []).length + state.moods.length + drinkPts;
   return { points: Math.max(0, earned - p.spent), treats: p.treats, tricks: TRICKS.filter(t => p.treats >= t.at) };
 }

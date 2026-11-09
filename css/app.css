@@ -589,3 +589,24 @@ html[data-scale="large"] .pet-bar { grid-template-columns: 64px 1fr; } html[data
 html[data-scale="large"] .pet-pick, html[data-scale="large"] .care-grid, html[data-scale="large"] .kind-row { grid-template-columns: 1fr 1fr; }
 @media (prefers-reduced-motion: reduce) { .pet-avatar, .pet-stage, .med-stage svg { animation: none; } }
 @media (min-width: 960px) { .care-grid { grid-template-columns: repeat(6, 1fr); } }
+
+/* v11.1：自由走動的夥伴 */
+#petRoam { position: fixed; left: 0; right: 0; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); height: 0; z-index: 40; pointer-events: none; }
+#petRoam.has-tabs { bottom: calc(6.4rem + env(safe-area-inset-bottom, 0px)); }
+.roam-pet { position: absolute; bottom: 0; left: 4vw; width: 84px; height: 84px; border: 0; background: none; padding: 0; cursor: pointer; pointer-events: auto; animation: roam 26s ease-in-out infinite; filter: drop-shadow(0 6px 6px rgba(29, 43, 36, .25)); }
+.roam-flip { display: block; animation: flip 26s steps(1) infinite; }
+.roam-bob { display: block; animation: hop .7s ease-in-out infinite alternate; }
+@keyframes roam { 0% { left: 4vw; } 45% { left: calc(min(100vw, 1240px) - 110px); } 50% { left: calc(min(100vw, 1240px) - 110px); } 95% { left: 4vw; } 100% { left: 4vw; } }
+@keyframes flip { 0% { transform: scaleX(-1); } 47% { transform: scaleX(1); } 97% { transform: scaleX(-1); } }
+@keyframes hop { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+#petRoam.talking .roam-pet, #petRoam.talking .roam-flip, #petRoam.listening .roam-pet { animation-play-state: paused; }
+#petRoam.listening .roam-pet { filter: drop-shadow(0 0 12px rgba(194, 57, 27, .8)); }
+.roam-say { position: absolute; bottom: 96px; left: 12px; right: 12px; max-width: 460px; margin: 0 auto; background: #fff; border: 3px solid var(--amber); border-radius: 20px; padding: .7rem .9rem; font-size: 1.05rem; line-height: 1.5; color: var(--ink); box-shadow: 0 10px 24px rgba(0, 0, 0, .15); opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; pointer-events: none; }
+#petRoam.talking .roam-say { opacity: 1; transform: none; pointer-events: auto; }
+.roam-say b { color: var(--amber-ink); }
+.roam-acts { display: flex; gap: .5rem; margin-top: .5rem; }
+.roam-acts button { flex: 1; min-height: 52px; border-radius: 14px; border: 2px solid var(--forest); background: var(--forest); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+.roam-acts button + button { background: #fff; color: var(--forest); }
+@media (min-width: 960px) { #petRoam { left: max(0px, calc((100vw - 1240px) / 2 + 252px)); } #petRoam.has-tabs { bottom: 1.5rem; } }
+@media (prefers-reduced-motion: reduce) { .roam-pet, .roam-flip, .roam-bob { animation: none; } }
+.body { padding-bottom: calc(13rem + env(safe-area-inset-bottom, 0px)); }
