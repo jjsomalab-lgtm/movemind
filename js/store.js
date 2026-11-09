@@ -12,7 +12,14 @@ const blank = () => ({
     simple: false,         // 簡易模式：首頁只顯示最重要的三個按鈕
     voice: true,
     shareRoute: false,     // 是否保存完整散步路線（預設只存距離與時間）
+    petType: null,         // 'dog' | 'cat' | 'turtle'
+    petCall: '',           // 寵物怎麼稱呼主人，例如「阿嬤」
+    county: '',            // 所在縣市（用來查天氣，不用 GPS）
   },
+  pet: { treats: 0, spent: 0 },   // 心動夥伴：吃過的點心數、用掉的點數
+  meditations: [],         // 靜坐 { at, minutes }
+  reminders: [],           // 生活提醒 { id, kind, label, time }
+  reminderLog: {},         // { '2026-11-09_r1': 'done' | 'later' }
   today: { date: '', mood: null, check: null, allowed: null },
   sessions: [],            // { id, at, type:'home'|'walk', activityId, name, reps, minutes, km, route? }
   moods: [],               // { at, mood }
@@ -33,7 +40,7 @@ function load() {
     if (!raw) return blank();
     const s = JSON.parse(raw);
     const b = blank();
-    return { ...b, ...s, profile: { ...b.profile, ...s.profile }, garden: { ...b.garden, ...s.garden }, today: { ...b.today, ...s.today } };
+    return { ...b, ...s, profile: { ...b.profile, ...s.profile }, garden: { ...b.garden, ...s.garden }, today: { ...b.today, ...s.today }, pet: { ...b.pet, ...(s.pet || {}) } };
   } catch (e) {
     return blank();
   }
@@ -118,6 +125,9 @@ export function loadDemo() {
   state.profile.name = '林阿姨';
   state.profile.screening = { done: true, level: 'standard', flags: [], at: new Date().toISOString(), cleared: false, setupWith: 'yes' };
   state.profile.contacts = [{ name: '女兒 小婷', phone: '0900000000' }];
+  state.profile.petType = 'dog'; state.profile.petCall = '林阿姨'; state.profile.county = '高雄市';
+  state.pet = { treats: 4, spent: 4 };
+  state.reminders = [{ id: 'rdemo1', kind: 'med', label: '血壓藥（示範）', time: '08:00' }, { id: 'rdemo2', kind: 'water', label: '喝一口水', time: '10:00' }, { id: 'rdemo3', kind: 'move', label: '起來動一動', time: '15:00' }];
   const moods = ['ok', 'tired', 'good', 'ok', 'good', 'good'];
   const plan = [['seated-knee', 'home', 10], ['walk', 'walk', 0.8], ['seated-march', 'home', 20], ['sit-to-stand', 'home', 8], ['walk', 'walk', 1.1], ['arm-circle', 'home', 10]];
   for (let i = 6; i >= 1; i--) {

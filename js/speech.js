@@ -122,3 +122,23 @@ export function unlockMediaChannel() {
     mediaUnlocked = true;
   } catch (e) { /* 忽略 */ }
 }
+
+// 按住說話：按下時開始辨識，放開時停止並回傳整段文字
+let holdRec = null, holdText = '';
+export function holdStart() {
+  if (!Rec) return false;
+  try {
+    holdText = ''; holdRec = new Rec(); holdRec.lang = 'zh-TW'; holdRec.continuous = true; holdRec.interimResults = true;
+    holdRec.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; holdText = t; };
+    holdRec.start(); return true;
+  } catch (e) { holdRec = null; return false; }
+}
+export function holdStop() {
+  return new Promise(resolve => {
+    if (!holdRec) return resolve(holdText.trim() || null);
+    const r = holdRec; holdRec = null;
+    let done = false; const fin = () => { if (done) return; done = true; resolve(holdText.trim() || null); };
+    r.onend = fin; r.onerror = fin; setTimeout(fin, 1500);
+    try { r.stop(); } catch (e) { fin(); }
+  });
+}

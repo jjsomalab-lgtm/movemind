@@ -3,8 +3,12 @@ import * as S from './store.js';
 import * as C from './content.js';
 import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, nextSuggestion, meetSpirit, befriend, spiritSVG } from './garden.js';
 import { demoSVG } from './demos.js';
+import { PETS, CARE, TRICKS, petLine, petSVG, petStats } from './pet.js';
+import { PLACES, getWeather, advise } from './weather.js';
+import { startMusic, stopMusic, GUIDE } from './meditate.js';
+import { KINDS, dueReminders, logKey, icsFor } from './reminders.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
-import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel } from './speech.js';
+import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, holdStart, holdStop } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
@@ -44,7 +48,7 @@ function setFont() {
 }
 
 // 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
-const NO_LINE = ['welcome', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday'];
+const NO_LINE = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday'];
 function lineHeaderBtn() {
   if (NO_LINE.includes(currentScreen)) return '';
   if (!C.lineReady()) return `<button class="line-top" data-go="chat" aria-label="跟小夥伴聊聊">${icon('chat')}<span>聊聊</span></button>`;
@@ -100,7 +104,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v10.7（2026-11-06）';
+export const APP_VERSION = 'v11.0（2026-11-09）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -121,12 +125,30 @@ function petals(n = 16) {
   setTimeout(() => box.remove(), 3200);
 }
 
+// 心動夥伴：每一頁都在，依畫面說不同的話；點寵物進小屋；按住麥克風跟牠說話
+const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday'];
+function petName() { const t = S.get().profile.petType; return t ? PETS[t].name : '小夥伴'; }
+function petCall() { const p = S.get().profile; return p.petCall || p.name || '你'; }
+function petBar() {
+  const p = S.get().profile;
+  if (!p.petType || NO_PET.includes(currentScreen)) return '';
+  run.petSeed = (run.petSeed || 0) + 1;
+  let line = run.petSay || petLine(currentScreen, petCall(), run.petSeed);
+  if (currentScreen === 'today' && run.weatherAdvice) line = run.weatherAdvice.text;
+  run.petSay = null;
+  return `<div class="pet-bar">
+    <button class="pet-avatar" data-go="petHome" aria-label="去${esc(petName())}的小屋">${petSVG(p.petType, 64)}</button>
+    <p class="pet-bubble" id="petBubble"><b>${esc(petName())}</b>　${esc(line)}</p>
+    ${canListen ? `<button class="pet-mic" data-hold="talk" aria-label="按住跟${esc(petName())}說話">${icon('mic')}<span>按住說話</span></button>` : `<button class="pet-mic" data-go="chat" aria-label="跟${esc(petName())}聊聊">${icon('chat')}<span>聊聊</span></button>`}
+  </div>`;
+}
+
 function page(title, body, { tab = null, back = null } = {}) {
   document.body.dataset.scene = SCENE_OF[currentScreen] || 'home';
   const banner = (['today', 'welcome'].includes(currentScreen) || !canSpeak ? inAppBanner() : '') + (['today', 'welcome'].includes(currentScreen) ? voicePill() : '');
   const homeLink = back && back !== 'today' && !NO_LINE.includes(currentScreen) && currentScreen !== 'walking'
     ? `<button class="btn ghost home-link" data-go="today">${icon('home')} 回首頁</button>` : '';
-  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
+  main().innerHTML = header(title, { back }) + `<section class="body${tab ? '' : ' no-tab'}">${banner}${reminderPop()}${petBar()}${body}${homeLink}</section>` + (tab ? nav(tab) : '');
   main().querySelector('.body').scrollTop = 0;
   window.scrollTo(0, 0);
 }
@@ -150,6 +172,7 @@ export function go(name, ...args) {
 
 function cleanup() {
   stopSpeaking();
+  if (run.medTimer) { clearInterval(run.medTimer); run.medTimer = null; stopMusic(); }
   if (run.breathTimer) { clearTimeout(run.breathTimer); run.breathTimer = null; }
   if (run.pose) { import('./pose.js').then(m => m.stopPose()); run.pose = false; }
 }
@@ -171,6 +194,30 @@ screens.welcome = () => {
     <p class="ver">版本 ${APP_VERSION}</p>
   `);
   speak('你好！我是心動小夥伴。我會陪你每天動一動，也會幫你照顧一座小花園。');
+};
+
+screens.petPick = () => {
+  const p = S.get().profile; const sel = run.pickPet || p.petType;
+  page('選一個夥伴', `
+    <p class="lead">誰要陪你每天動一動呢？</p>
+    <div class="pet-pick">${Object.entries(PETS).map(([k, v]) => `<button class="pet-card ${sel === k ? 'on' : ''}" data-pickpet="${k}">${petSVG(k, 84)}<b>${v.name}</b><span>${v.kind}</span><small>${v.trait}</small></button>`).join('')}</div>
+    <label class="field">${sel ? esc(PETS[sel].name) : '牠'}要怎麼叫你？
+      <input id="petCall" type="text" maxlength="8" placeholder="例如：阿嬤、阿公、林阿姨" value="${esc(p.petCall || p.name)}">
+    </label>
+    <button class="btn primary big" data-act="petNext">${run.fromSettings ? '儲存' : '下一步'}</button>
+  `, { back: run.fromSettings ? 'settings' : 'welcome' });
+  speak('誰要陪你每天動一動呢？可以選小狗阿福、小貓咪咪，或是長壽龜慢慢。');
+};
+
+screens.place = () => {
+  const cur = S.get().profile.county;
+  page('你住在哪裡？', `
+    <div class="q-card"><p class="q">你住在哪個縣市？</p>${sayBtn('你住在哪個縣市？')}</div>
+    <p>知道你在哪裡，夥伴就能看天氣，下雨時提醒你在家動一動。不需要開定位。</p>
+    <select id="county" class="big-select" aria-label="選擇縣市"><option value="">先不設定</option>${Object.keys(PLACES).map(c => `<option ${cur === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
+    <button class="btn primary big" data-act="placeNext">${run.fromSettings ? '儲存' : '下一步'}</button>
+  `, { back: run.fromSettings ? 'settings' : 'petPick' });
+  speak('你住在哪個縣市？知道你在哪裡，夥伴就能看天氣。');
 };
 
 screens.screening = () => {
@@ -198,7 +245,7 @@ screens.setupWith = () => {
       <button class="btn choice" data-setup="no">我自己設定</button>
     </div>
     <p class="note">建議第一次由家人或據點人員陪同回答，比較不會漏掉重要的事。</p>
-  `, { back: 'welcome' });
+  `, { back: 'place' });
   speak(q);
 };
 
@@ -286,8 +333,18 @@ function lineLink(text, label, cls = 'btn line-btn') {
   return C.lineReady() ? `<a class="${cls}" href="${lineOaChatURL(C.LINE_OA_ID, text)}" target="_blank" rel="noopener">${label}</a>` : `<button class="${cls}" data-go="chat">${label}</button>`;
 }
 
+async function refreshWeather() {
+  const county = S.get().profile.county; if (!county || run.weatherLoading) return;
+  run.weatherLoading = true;
+  const w = await getWeather(county); run.weatherLoading = false;
+  run.weather = w; run.weatherAdvice = advise(w, petCall());
+  const b = $('#petBubble');
+  if (b && currentScreen === 'today' && run.weatherAdvice) b.innerHTML = `<b>${esc(petName())}</b>　${run.weatherAdvice.icon} ${esc(county)}：${esc(run.weatherAdvice.text)}`;
+}
+
 screens.today = () => {
   S.ensureToday();
+  if (!run.weather) setTimeout(refreshWeather, 0);
   const s = S.get(), t = s.today, w = S.weekStats();
   const name = s.profile.name ? `${s.profile.name}，` : '';
   const title = `${greetWord()}，今天也為自己留一點時間。`;
@@ -728,6 +785,7 @@ screens.walk = () => {
         <li>手機螢幕要保持亮著，才能記錄路線。</li>
       </ul>
     </div>
+    ${run.weatherAdvice && run.weatherAdvice.outdoor !== 'good' ? `<div class="q-card ${run.weatherAdvice.outdoor === 'indoor' ? 'warn' : ''}"><p class="q">${run.weatherAdvice.icon} ${esc(run.weatherAdvice.text)}</p>${run.weatherAdvice.outdoor === 'indoor' ? '<button class="btn primary" data-go="activities">改在家動一動</button>' : ''}</div>` : ''}
     <div class="panel">
       <h2>想走去哪裡？（可以不選）</h2>
       <p class="note">找找附近的公園，選一個當目的地。到了會自動打卡，還會遇到特別的葉靈。</p>
@@ -951,7 +1009,7 @@ screens.chat = () => {
       <p><b>${ai ? '也可以在 LINE 聊' : '到 LINE 跟小夥伴聊'}</b><br>${ai ? '在官方帳號聊天，是同一個小夥伴。' : '在官方帳號聊天，小夥伴會用 AI 回答你。'}</p>
       <a class="btn line-btn" href="${lineOaChatURL(C.LINE_OA_ID, lineOpener())}" target="_blank" rel="noopener">打開 LINE 聊天</a>
     </div>` : '';
-  page('跟小夥伴聊聊', `
+  page(`跟${petName()}聊聊`, `
     ${ai ? '' : lineCard}
     <p class="demo-flag">${ai ? '小夥伴由 AI 回答，和 LINE 官方帳號是同一個小夥伴' : '展示模式：回應為預先設計'}</p>
     <div class="chat" id="chatLog">
@@ -961,7 +1019,7 @@ screens.chat = () => {
     <div class="chips">${C.CHAT_CHIPS.map(c => `<button class="chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <form class="chat-input" data-form="chat">
       <input id="chatText" type="text" maxlength="120" placeholder="想說什麼呢？" aria-label="輸入訊息">
-      ${canListen ? `<button type="button" class="icon-btn" data-act="chatVoice" aria-label="用說的">${icon('mic')}</button>` : ''}
+      ${canListen ? `<button type="button" class="icon-btn hold" data-hold="talk" aria-label="按住說話">${icon('mic')}</button>` : ''}
       <button type="submit" class="btn send">送出</button>
     </form>
     ${ai ? lineCard : ''}
@@ -1005,6 +1063,7 @@ async function sendChat(text) {
     let reply = rule ? rule.reply : C.CHAT_DEFAULT;
     const mine = s.chat.filter(m => m.who === 'me').length + 1;
     if (!safety && mine % 4 === 0) reply += '\n' + C.BRIDGE_LINES[(mine / 4) % C.BRIDGE_LINES.length];
+    if (!safety && s.profile.petType) reply = `${PETS[s.profile.petType].sound} ${reply}`;
     pushChat('me', text); pushChat('bot', reply);
     screens.chat(); speak(reply); chatExtras(flagOf(rule));
     return;
@@ -1024,7 +1083,7 @@ async function sendChat(text) {
     const mood = s.today.mood && C.MOODS.find(m => m.id === s.today.mood);
     const res = await fetch(C.AI_CHAT_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
-      body: JSON.stringify({ sessionId: S.chatSession(), text: text.slice(0, 300), mood: mood ? mood.label : '', allowed: s.today.allowed || '' }),
+      body: JSON.stringify({ sessionId: S.chatSession(), text: text.slice(0, 300), mood: mood ? mood.label : '', allowed: s.today.allowed || '', pet: s.profile.petType || '', petName: petName(), call: petCall() }),
     });
     clearTimeout(t);
     const data = await res.json();
@@ -1035,10 +1094,115 @@ async function sendChat(text) {
   if (!reply) { // 連線失敗：退回預先設計的回應，展示不會中斷
     reply = (rule ? rule.reply : C.CHAT_DEFAULT);
     flag = flagOf(rule);
+    // 預設回應也用寵物的口吻（危機與身體緊急的回覆保持原樣、不加語氣詞）
+    if (s.profile.petType && !rule?.crisis && !rule?.body) reply = `${PETS[s.profile.petType].sound} ${reply}`;
   }
   pushChat('bot', reply);
   if (currentScreen !== 'chat') return;
   screens.chat(); speak(reply); chatExtras(flag);
+}
+
+// ---------- 心動夥伴的小屋 ----------
+screens.petHome = () => {
+  const p = S.get().profile; if (!p.petType) { run.fromSettings = false; return go('petPick'); }
+  const pet = PETS[p.petType], st = petStats(S.get());
+  const next = TRICKS.find(t => t.at > st.treats);
+  const msg = run.petMsg; run.petMsg = null;
+  page(`${pet.name}的小屋`, `
+    <section class="pet-home">
+      <div class="pet-stage ${run.petHappy ? 'happy' : ''}">${petSVG(p.petType, 200)}</div>
+      <h2>${pet.name}<small>　${pet.kind}</small></h2>
+      <p class="note">${pet.trait}</p>
+      ${msg ? `<div class="bubble bot">${esc(msg)}</div>` : ''}
+      <div class="stats3"><div><b>${st.points}</b><span>心動點數</span></div><div><b>${st.treats}</b><span>吃過的點心</span></div><div><b>${st.tricks.length}</b><span>學會的把戲</span></div></div>
+    </section>
+    <h3 class="section-title">陪${pet.name}做什麼？</h3>
+    <div class="care-grid">${CARE.map(c => `<button class="care" ${c.act ? `data-act="${c.act}"` : `data-go="${c.go}"`}><span class="ci">${c.icon}</span><b>${c.label}</b><small>${c.sub}</small></button>`).join('')}</div>
+    <section class="card">
+      <h3 class="card-title">${pet.name}學會的把戲</h3>
+      <p>${st.tricks.length ? st.tricks.map(t => `✓ ${t.name}`).join('　') : '還沒學會把戲，吃點心就會慢慢學會！'}</p>
+      ${next ? `<p class="note">再吃 ${next.at - st.treats} 次點心，就會學會「${next.name}」。</p>` : '<p class="note">所有把戲都學會了！</p>'}
+      <p class="note">做活動、散步、呼吸練習、靜坐、記錄心情，都會得到心動點數。${pet.name}永遠不會餓、不會生病，休息幾天也沒關係。</p>
+    </section>
+    <button class="btn ghost" data-go="reminders">⏰ 設定提醒（喝水、用藥、動一動）</button>
+  `, { tab: 'oasis' });
+  run.petHappy = false;
+};
+
+// ---------- 靜坐冥想（原創音樂，即時合成） ----------
+screens.meditate = () => {
+  page('一起靜坐', `
+    <div class="med-stage" id="medStage">${petSVG(S.get().profile.petType || 'turtle', 150, { mood: 'calm' })}<p id="medGuide" class="med-guide">找一張穩固的椅子坐好</p><p id="medLeft" class="note"></p></div>
+    <p class="note">坐著做，眼睛可以閉上，也可以睜開。覺得不舒服就隨時停下來。背景音樂是心動力原創，可以安心使用。</p>
+    <div id="medPick">
+      <h3 class="section-title">背景聲音</h3>
+      <div class="answer-row two"><button class="btn choice ${run.medSound !== 'wave' ? 'on' : ''}" data-medsound="rain">🌧️ 雨聲</button><button class="btn choice ${run.medSound === 'wave' ? 'on' : ''}" data-medsound="wave">🌊 海浪</button></div>
+      <h3 class="section-title">要多久？</h3>
+      <div class="answer-row two"><button class="btn primary" data-med="3">3 分鐘</button><button class="btn" data-med="5">5 分鐘</button></div>
+    </div>
+    <button class="btn ghost" data-act="stopMed" id="medStop" hidden>結束靜坐</button>
+    <div id="medDone"></div>
+  `, { back: 'lake' });
+};
+
+function startMeditation(min) {
+  unlockMediaChannel();
+  startMusic(run.medSound || 'rain');
+  $('#medPick').hidden = true; $('#medStop').hidden = false;
+  const total = min * 60; let t = 0, gi = 0;
+  const step = Math.floor(total / GUIDE.length);
+  const show = () => { const g = GUIDE[gi % GUIDE.length]; $('#medGuide').textContent = g; speak(g); gi += 1; };
+  show();
+  run.medTimer = setInterval(() => {
+    if (currentScreen !== 'meditate') return;
+    t += 1; const left = total - t;
+    $('#medLeft').textContent = `還有 ${Math.floor(left / 60)} 分 ${String(left % 60).padStart(2, '0')} 秒`;
+    if (t % step === 0 && gi < GUIDE.length) show();
+    if (left <= 0) finishMeditation(min);
+  }, 1000);
+}
+
+function finishMeditation(min) {
+  clearInterval(run.medTimer); run.medTimer = null; stopMusic();
+  const s = S.get(); s.meditations.push({ at: new Date().toISOString(), minutes: min }); s.garden.water += 1; S.save();
+  const msg = `${petCall()}，我們一起安靜了 ${min} 分鐘，好舒服喔。得到一滴晨露和心動點數！`;
+  $('#medStop').hidden = true; $('#medGuide').textContent = '完成了！';
+  $('#medDone').innerHTML = `<div class="done-card"><span class="big-emoji">🍃</span><p>${esc(msg)}</p></div><button class="btn primary" data-go="petHome">去看${esc(petName())}</button><button class="btn" data-go="lake">回心靈湖畔</button>`;
+  speak(msg); petals();
+}
+
+// ---------- 生活提醒 ----------
+screens.reminders = () => {
+  const list = S.get().reminders, k = run.remKind || 'water';
+  const msg = run.settingsMsg; run.settingsMsg = null;
+  page('生活提醒', `
+    ${msg ? `<div class="saved" role="status">✓ ${esc(msg)}</div>` : ''}
+    <section class="card">
+      <h3 class="card-title">已設定的提醒</h3>
+      ${list.length ? list.slice().sort((x, y) => x.time.localeCompare(y.time)).map(r => `<div class="contact-row"><span>${KINDS[r.kind].icon} <b>${r.time}</b>　${esc(r.label)}</span><button class="btn small" data-delrem="${r.id}">刪除</button></div>`).join('') : '<p class="note">還沒有設定提醒。</p>'}
+      ${list.length ? '<button class="btn line-btn" data-act="exportIcs">📅 加到手機行事曆（APP 關掉也會響）</button>' : ''}
+    </section>
+    <section class="card">
+      <h3 class="card-title">新增提醒</h3>
+      <div class="kind-row">${Object.entries(KINDS).map(([id, v]) => `<button class="btn choice ${k === id ? 'on' : ''}" data-remkind="${id}">${v.icon} ${v.label}</button>`).join('')}</div>
+      <label class="field">${k === 'med' ? '要提醒吃什麼？' : '提醒的內容'}<input id="remLabel" type="text" maxlength="20" placeholder="${k === 'med' ? '例如：血壓藥、飯後鈣片' : esc(KINDS[k].default || '例如：量血壓')}" value="${esc(KINDS[k].default)}"></label>
+      <label class="field">時間<input id="remTime" type="time" value="${k === 'med' ? '08:00' : k === 'water' ? '10:00' : '15:00'}"></label>
+      <button class="btn primary" data-act="addRem">新增提醒</button>
+      <p class="note">家人也可以在這支手機上幫忙設定。${k === 'med' ? '心動力只依你設定的時間提醒，<b>不會建議用藥</b>；用藥有疑問，請問醫師或藥師。' : k === 'water' ? '如果醫師有限制喝水量，請依醫師建議。' : ''}</p>
+    </section>
+  `, { back: 'settings' });
+};
+
+// 到時間的提醒：由寵物在頁面最上方提醒
+function reminderPop() {
+  if (NO_PET.includes(currentScreen) && currentScreen !== 'help') return '';
+  const due = dueReminders(S.get()).filter(r => !(run.snooze && run.snooze[r.id] > Date.now()));
+  if (!due.length) return '';
+  const r = due[0], call = petCall();
+  const text = r.kind === 'med' ? `${call}，該吃「${r.label}」了喔！` : r.kind === 'water' ? `${call}，${r.label}吧！` : `${call}，${r.label}的時間到了！`;
+  if (run.lastRemSpoken !== r.id) { run.lastRemSpoken = r.id; setTimeout(() => speak(text), 300); }
+  return `<div class="rem-pop" role="alert">${S.get().profile.petType ? petSVG(S.get().profile.petType, 56) : ''}<div><p><b>${KINDS[r.kind].icon} ${esc(text)}</b></p>
+    <div class="grid2"><button class="btn primary" data-remdone="${r.id}">${r.kind === 'med' ? '吃過了' : '好了'}</button><button class="btn" data-remlater="${r.id}">等一下再提醒</button></div></div></div>`;
 }
 
 // ---------- 心靈湖畔 ----------
@@ -1056,6 +1220,7 @@ screens.lake = () => {
       ${reply ? `<div class="bubble bot">${esc(reply.text)}</div>${reply.btns}` : ''}
     </section>
     <button class="feature-card" data-go="breathe"><span class="fc-icon">💧</span><span><b>呼吸練習</b><br>吸 4 秒、吐 6 秒，完成可以得到一滴晨露</span></button>
+    <button class="feature-card" data-go="meditate"><span class="fc-icon">🍃</span><span><b>靜坐冥想</b><br>3 或 5 分鐘，搭配雨聲或海浪</span></button>
     <button class="feature-card" data-go="mood"><span class="fc-icon">🌸</span><span><b>記錄今天的心情</b><br>點一下，湖上就開一朵花</span></button>
     <button class="feature-card" data-go="fof"><span class="fc-icon">🍃</span><span><b>走路時擔心跌倒嗎？</b><br>每週回答一次，看看信心有沒有回來</span></button>
     <button class="feature-card" data-go="chat"><span class="fc-icon">💬</span><span><b>跟小夥伴聊聊</b><br>在 APP 裡說說話</span></button>
@@ -1156,6 +1321,7 @@ screens.oasis = () => {
       <h3 class="card-title">紀念徽章（${got.size} / ${C.BADGES.length}）</h3>
       <div class="badges">${C.BADGES.map(b => `<div class="badge ${got.has(b.id) ? 'got' : ''}">${badgeSVG(b.icon, got.has(b.id))}<b>${b.name}</b><span>${got.has(b.id) ? b.desc : '還沒解鎖：' + b.desc}</span></div>`).join('')}</div>
     </section>
+    <button class="oasis-card" data-go="petHome"><div class="oasis-pic">${S.get().profile.petType ? petSVG(S.get().profile.petType, 110) : ''}</div><div><p class="eyebrow">心動夥伴</p><h3>${S.get().profile.petType ? esc(PETS[S.get().profile.petType].name) + '的小屋' : '選一個夥伴'}</h3><p class="note">餵點心、學把戲、一起靜坐</p></div></button>
     <div class="quick">
       <button class="quick-item garden" data-go="garden">${icon('garden')}<b>心動綠洲花園</b><span>${g.plots.length} 株植物・${new Set((g.spirits || []).map(s => s.id)).size} 隻葉靈</span></button>
       <button class="quick-item week" data-go="week">${icon('chart')}<b>每週回顧</b><span>這週活動 ${w.total} 次</span></button>
@@ -1217,6 +1383,12 @@ screens.settings = () => {
     <section class="panel">
       <h2>我的稱呼</h2>
       <div class="inline-form"><input id="sname" type="text" maxlength="12" value="${esc(p.name)}" aria-label="我的稱呼" placeholder="例如：林阿姨"><button class="btn small" data-act="saveName">儲存</button></div>
+    </section>
+    <section class="panel">
+      <h2>心動夥伴與所在地</h2>
+      <p>${S.get().profile.petType ? `夥伴：${PETS[S.get().profile.petType].name}（叫你「${esc(petCall())}」）` : '還沒選夥伴'}<br>所在地：${esc(S.get().profile.county || '未設定')}</p>
+      <div class="grid2"><button class="btn" data-act="editPet">換夥伴或稱呼</button><button class="btn" data-act="editPlace">更改所在地</button></div>
+      <button class="btn ghost" data-go="reminders">⏰ 生活提醒（喝水、用藥、動一動）</button>
     </section>
     <section class="panel">
       <h2>今天的狀況</h2>
@@ -1317,7 +1489,14 @@ const actions = {
   demo: () => { S.loadDemo(); setFont(); go('today'); },
   // 結束示範：清除範例資料，回到第一次使用的歡迎畫面（下一位使用者看到的是全新狀態）
   endDemo: () => { if (confirm('結束示範旅程？範例資料會清除，回到歡迎畫面。')) { S.reset(); setFont(); go('welcome'); } },
-  startScreening: () => { S.get().profile.name = $('#name').value.trim(); S.save(); go('setupWith'); },
+  startScreening: () => { S.get().profile.name = $('#name').value.trim(); S.save(); go('petPick'); },
+  petNext: () => {
+    const p = S.get().profile;
+    if (!run.pickPet && !p.petType) { alert('請先選一個夥伴喔！'); return; }
+    p.petType = run.pickPet || p.petType; p.petCall = $('#petCall').value.trim() || p.name || ''; S.save();
+    go(run.fromSettings ? 'settings' : 'place');
+  },
+  placeNext: () => { const v = $('#county')?.value || ''; S.get().profile.county = v; S.save(); sessionStorage.removeItem('mm-weather'); run.weatherAdvice = null; go(run.fromSettings ? 'settings' : 'setupWith'); },
   finishOnboard: () => { readContact(); S.save(); go('today'); },
   startActivity: () => {
     S.ensureToday();
@@ -1336,6 +1515,28 @@ const actions = {
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
   findParks: loadParks,
+  editPet: () => { run.fromSettings = true; run.pickPet = null; go('petPick'); },
+  editPlace: () => { run.fromSettings = true; go('place'); },
+  feedPet: () => {
+    const st = petStats(S.get()), s = S.get();
+    if (st.points < 1) { run.petMsg = `點數不夠了～做個活動、散步或呼吸練習，就能得到點數喔！`; return go('petHome'); }
+    s.pet.spent += 1; s.pet.treats += 1; S.save();
+    const learned = TRICKS.find(t => t.at === s.pet.treats);
+    run.petMsg = learned ? `好吃！${PETS[s.profile.petType].sound} 我學會「${learned.name}」了！` : `好吃！謝謝${petCall()}！${PETS[s.profile.petType].sound}`;
+    run.petHappy = true; go('petHome'); speak(run.petMsg); petals(10);
+  },
+  stopMed: () => { clearInterval(run.medTimer); run.medTimer = null; stopMusic(); go('meditate'); },
+  addRem: () => {
+    const label = $('#remLabel').value.trim(), time = $('#remTime').value, k = run.remKind || 'water';
+    if (!label || !time) { alert(k === 'med' ? '請輸入要吃什麼和時間。' : '請輸入內容和時間。'); return; }
+    S.get().reminders.push({ id: 'r' + Date.now().toString(36), kind: k, label, time }); S.save();
+    run.settingsMsg = `已新增：${time} ${label}`; go('reminders');
+  },
+  exportIcs: () => {
+    const blob = new Blob([icsFor(S.get().reminders)], { type: 'text/calendar;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '心動力提醒.ics'; document.body.appendChild(a); a.click(); a.remove();
+    run.settingsMsg = '已產生行事曆檔，請在手機上選擇「加入行事曆」'; setTimeout(() => go('reminders'), 300);
+  },
   checkPrev: () => { run.checkEditing = false; run.checkIdx = Math.max(0, run.checkIdx - 1); go('check'); },
   checkPrevFromSummary: () => { run.checkIdx = run.checkAns.chest && run.checkAns.chest !== 'no' ? 0 : C.DAILY_CHECK.length - 1; run.checkEditing = false; go('check'); },
   confirmCheck: () => finishCheck(),
@@ -1441,6 +1642,13 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.chip) return sendChat(d.chip);
+  if (d.pickpet) { run.pickPet = d.pickpet; screens.petPick(); return speak(`${PETS[d.pickpet].name}：${PETS[d.pickpet].trait}。`); }
+  if (d.med) return startMeditation(Number(d.med));
+  if (d.medsound) { run.medSound = d.medsound; return screens.meditate(); }
+  if (d.remkind) { run.remKind = d.remkind; return screens.reminders(); }
+  if (d.delrem) { if (!confirm('刪除這個提醒？')) return; const s = S.get(); s.reminders = s.reminders.filter(r => r.id !== d.delrem); S.save(); run.settingsMsg = '提醒已刪除'; return go('reminders'); }
+  if (d.remdone) { const s = S.get(), r = s.reminders.find(x => x.id === d.remdone); s.reminderLog[logKey(r)] = 'done'; S.save(); run.petSay = r.kind === 'med' ? '好的，記得配溫開水喔！' : '做得好！'; return go(currentScreen); }
+  if (d.remlater) { (run.snooze = run.snooze || {})[d.remlater] = Date.now() + 15 * 60000; run.petSay = '好～15 分鐘後我再提醒你。'; return go(currentScreen); }
   if (d.dest) { run.walkDest = d.dest === 'none' ? null : run.parkState[Number(d.dest)]; return screens.walk(); }
   if (d.moodq) {
     S.setMood(d.moodq);
@@ -1502,6 +1710,34 @@ document.addEventListener('change', e => {
 document.addEventListener('submit', e => {
   if (e.target.dataset.form === 'chat') { e.preventDefault(); sendChat($('#chatText').value); }
 });
+
+// ---------- 按住說話：按下開始聽，放開就送給夥伴 ----------
+let holding = null;
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-hold="talk"]'); if (!b) return;
+  e.preventDefault();
+  if (!holdStart()) { go('chat'); return; }
+  holding = b; b.classList.add('listening');
+  const bub = $('#petBubble'); if (bub) bub.innerHTML = `<b>${esc(petName())}</b>　🎙️ 我在聽，說完放開就好…`;
+});
+const endHold = async () => {
+  if (!holding) return;
+  const b = holding; holding = null; b.classList.remove('listening');
+  const text = await holdStop();
+  if (!text) { const bub = $('#petBubble'); if (bub) bub.innerHTML = `<b>${esc(petName())}</b>　沒聽清楚，再按住說一次好嗎？`; return; }
+  if (currentScreen !== 'chat') go('chat');
+  sendChat(text);
+};
+document.addEventListener('pointerup', endHold);
+document.addEventListener('pointercancel', endHold);
+document.addEventListener('contextmenu', e => { if (e.target.closest('[data-hold]')) e.preventDefault(); });
+
+// 每分鐘檢查一次提醒：到時間就在頁面最上方出現寵物提醒
+setInterval(() => {
+  if (document.hidden || $('.rem-pop') || !dueReminders(S.get()).length) return;
+  const body = main().querySelector('.body'); const html = reminderPop();
+  if (body && html) body.insertAdjacentHTML('afterbegin', html);
+}, 60000);
 
 // ---------- 啟動 ----------
 setFont();
