@@ -684,3 +684,27 @@ html[data-scale="large"] .shop { grid-template-columns: 1fr 1fr; }
 .plan-link { word-break: break-all; font-size: .75rem; color: var(--muted); background: #F4F6F2; border-radius: 10px; padding: .5rem; margin: 0; }
 #holdBtn.holding { background: #477A9C; border-color: #477A9C; }
 html[data-scale="large"] .coach-list { grid-template-columns: 1fr; }
+
+/* v12.2：今日任務整合教練計畫、示範預約、店家儀表板 */
+.task-card.is-plan { border: 2px solid #9CC0D6; }
+.task-card.is-plan .eyebrow { color: #2F5C79; }
+.plan-offer { margin: 0; background: #FFF4DA; border-radius: 12px; padding: .5rem .7rem; font-size: .95rem; }
+.plan-offer.dim { background: #F4F1EA; color: var(--muted); }
+.day-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
+.day-chip { display: flex; flex-direction: column; align-items: center; padding: .4rem 0; min-height: 56px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font: inherit; font-weight: 800; color: var(--ink); cursor: pointer; font-size: .9rem; }
+.day-chip small { font-weight: 600; color: var(--muted); } .day-chip.on { border-color: var(--forest); background: #E7F0E7; }
+.slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; margin-top: .6rem; }
+.slot { min-height: 52px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font: inherit; font-weight: 800; color: var(--forest); cursor: pointer; }
+.slot.on { background: var(--forest); color: #fff; border-color: var(--forest); }
+.hold-card { border: 2px solid var(--amber); background: #FFF8EA; }
+.flex-card { border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--line); background: #fff; max-width: 420px; align-self: center; width: 100%; }
+.flex-head { background: #06C755; color: #fff; font-weight: 900; padding: .8rem 1rem; font-size: 1.1rem; }
+.flex-body { padding: 1rem; display: flex; flex-direction: column; gap: .3rem; } .flex-body h3 { margin: 0; color: var(--forest); font-size: 1.4rem; } .flex-body p { margin: 0; }
+.flex-store { color: var(--amber-ink); font-weight: 800; }
+.client-list { display: flex; flex-direction: column; gap: .5rem; }
+.client { display: flex; flex-direction: column; gap: .2rem; padding: .6rem .8rem; border-radius: 14px; border: 1px solid var(--line); background: #fff; }
+.client small { display: block; color: var(--muted); font-size: .8rem; } .client.quiet { border-color: #E9B7A6; background: #FFF4F0; }
+.client-meta { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--muted); } .client-meta em { color: #B5432A; font-style: normal; font-weight: 700; }
+.contact-row.new { background: #E7F0E7; border-radius: 10px; padding: .3rem .5rem; }
+.tour-link.inline { min-height: 0; padding: 0 .3rem; font-size: .8rem; }
+html[data-scale="large"] .slot-grid { grid-template-columns: repeat(2, 1fr); } html[data-scale="large"] .day-row { grid-template-columns: repeat(4, 1fr); }

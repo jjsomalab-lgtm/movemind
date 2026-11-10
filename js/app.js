@@ -50,7 +50,7 @@ function setFont() {
 }
 
 // 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
-const NO_LINE = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday', 'coach'];
+const NO_LINE = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday', 'coach', 'store', 'book'];
 function lineHeaderBtn() {
   if (NO_LINE.includes(currentScreen)) return '';
   if (!C.lineReady()) return `<button class="line-top" data-go="chat" aria-label="跟小夥伴聊聊">${icon('chat')}<span>聊聊</span></button>`;
@@ -106,7 +106,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v12.1（2026-11-11）';
+export const APP_VERSION = 'v12.2（2026-11-11）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -128,7 +128,7 @@ function petals(n = 16) {
 }
 
 // 心動夥伴：每一頁都在，依畫面說不同的話；點寵物進小屋；按住麥克風跟牠說話
-const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday', 'coach'];
+const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday', 'coach', 'store'];
 function petName() { const p = S.get().profile; return p.petType ? (p.petName || PETS[p.petType].name) : '小夥伴'; }
 function petCall() { const p = S.get().profile; return p.petCall || p.name || '你'; }
 function petBar() { return ''; }
@@ -178,6 +178,7 @@ export function go(name, ...args) {
 
 function cleanup() {
   stopSpeaking();
+  if (run.holdTick && currentScreen !== 'book') { clearInterval(run.holdTick); run.holdTick = null; }
   if (run.holdTimer) { clearInterval(run.holdTimer); run.holdTimer = null; run.holding = false; }
   if (run.medTimer) { clearInterval(run.medTimer); run.medTimer = null; stopMusic(); }
   if (run.breathTimer) { clearTimeout(run.breathTimer); run.breathTimer = null; }
@@ -321,6 +322,15 @@ function todayTask() {
   const s = S.get(), t = s.today;
   const doneHome = s.sessions.some(x => x.type === 'home' && S.dayKey(x.at) === t.date);
   const doneWalk = s.sessions.some(x => x.type === 'walk' && S.dayKey(x.at) === t.date);
+  if (t.allowed === 'none') return { title: '今天好好休息', what: '讀一張健康小知識', why: '身體不舒服的日子，休息就是最好的照顧。', btn: '到知識花園看看', attr: 'data-go="knowledge"' };
+  if (s.plan) {
+    const w = planWeek(s.plan), okLevel = id => { const x = C.ACTIVITIES.find(y => y.id === id); return t.allowed !== 'seated' || x.level === 'seated'; };
+    const next = s.plan.items.find(id => !w.doneToday.has(id) && okLevel(id));
+    if (next) {
+      const x = C.ACTIVITIES.find(y => y.id === next), done = s.plan.items.filter(id => w.doneToday.has(id)).length;
+      return { title: `${s.plan.coach || '教練'}的居家動能保養`, what: `下一個：「${x.name}」`, why: `${planFrom(s.plan)}為你準備。今天完成 ${done}／${s.plan.items.length} 個，${x.repsNote || ''}。`, btn: '開始這個動作', attr: `data-planact="${next}"`, plan: true };
+    }
+  }
   if (t.mood === 'tired' || t.mood === 'upset') return { title: '讓心慢下來', what: '2 分鐘呼吸練習', why: '累或心煩的時候，先照顧心情，身體也會跟著放鬆。', btn: '開始呼吸練習', attr: 'data-go="breathe"' };
   if (t.allowed === 'none') return { title: '今天好好休息', what: '讀一張健康小知識', why: '身體不舒服的日子，休息就是最好的照顧。', btn: '到知識花園看看', attr: 'data-go="knowledge"' };
   if (!doneHome) {
@@ -390,14 +400,14 @@ screens.today = () => {
   page('首頁', `
     ${s.demo ? `<p class="tour-flag"><span>示範旅程</span><button data-act="endDemo">結束示範</button></p>` : ''}
     ${heroScene}
-    ${planCard()}
-    <section class="task-card float">
-      <p class="eyebrow">今日任務</p>
+    <section class="task-card float ${task.plan ? 'is-plan' : ''}">
+      <p class="eyebrow">${task.plan ? '🧘 今日任務・教練的居家保養' : '今日任務'}</p>
       <h3>${esc(task.title)}</h3>
       <p class="task-what">${esc(task.what)}</p>
       <p>${esc(task.why)}</p>
       <button class="btn primary big" ${task.attr}>${esc(task.btn)}</button>
     </section>
+    ${planCard()}
     ${rescreenDue() ? '<button class="btn soft" data-act="redoScreening">已經 3 個月了，請重新回答健康小問題</button>' : ''}
     ${fofDue() ? '<button class="btn soft" data-go="fof">每週小問題：走路時擔心跌倒嗎？</button>' : ''}
     <div class="home-grid">
@@ -1339,7 +1349,7 @@ function reminderPop() {
 // 計畫內容放在網址裡（不需要後端）：?plan=<base64url(JSON)>
 const b64e = obj => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64d = s => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0))));
-function planURL(p) { return `${location.origin}${location.pathname}?openExternalBrowser=1&plan=${b64e({ s: p.store, c: p.coach, n: p.note, i: p.items })}`; }
+function planURL(p) { return `${location.origin}${location.pathname}?openExternalBrowser=1&plan=${b64e({ s: p.store, c: p.coach, n: p.note, i: p.items, b: p.book || '', o: p.offer || '' })}`; }
 function importPlanFromURL() {
   const q = new URLSearchParams(location.search).get('plan'); if (!q) return false;
   try {
@@ -1347,7 +1357,7 @@ function importPlanFromURL() {
     if (!ids.length) return false;
     const s = S.get(), old = s.plan;
     const same = old && old.store === d.s && old.coach === d.c && JSON.stringify(old.items) === JSON.stringify(ids);
-    s.plan = { store: String(d.s || '').slice(0, 20), coach: String(d.c || '').slice(0, 12), note: String(d.n || '').slice(0, 60), items: ids, at: same ? old.at : new Date().toISOString(), log: same ? old.log : [] };
+    s.plan = { store: String(d.s || '').slice(0, 20), coach: String(d.c || '').slice(0, 12), note: String(d.n || '').slice(0, 60), items: ids, book: /^(https:\/\/|tel:)/.test(d.b || '') ? String(d.b).slice(0, 300) : '', offer: String(d.o || '').slice(0, 30), at: same ? old.at : new Date().toISOString(), log: same ? old.log : [] };
     S.save(); run.planNew = !same;
     const u = new URL(location.href); u.searchParams.delete('plan'); history.replaceState(null, '', u.pathname + u.search + u.hash);
     return true;
@@ -1372,7 +1382,10 @@ function planCard() {
     ${p.note ? `<p class="plan-note">「${esc(p.note)}」</p>` : ''}
     <div class="plan-items">${p.items.map(id => { const a = C.ACTIVITIES.find(x => x.id === id); return `<button class="plan-item ${w.doneToday.has(id) ? 'done' : ''}" data-planact="${id}"><span>${w.doneToday.has(id) ? '✓' : '○'}</span><b>${esc(a.name)}</b><small>${esc(a.repsNote || '')}</small></button>`; }).join('')}</div>
     <p class="note">這 7 天完成 <b>${w.count}</b> 次、共 <b>${w.days}</b> 天。動作開始前，會先做安全確認。</p>
-    <div class="grid2"><button class="btn line-btn" data-act="reportPlan">回報給${esc(p.coach || '教練')}</button><button class="btn ghost" data-act="clearPlan">移除這份計畫</button></div>
+    ${p.offer ? (w.count >= 3 ? `<p class="plan-offer">🎁 已完成 ${w.count} 次居家保養！下次到店：<b>${esc(p.offer)}</b></p>` : `<p class="plan-offer dim">🎁 再完成 ${3 - w.count} 次居家保養，就能獲得：${esc(p.offer)}</p>`) : ''}
+    ${bookingInfo()}
+    <div class="grid2"><button class="btn line-btn" data-act="reportPlan">回報給${esc(p.coach || '教練')}</button><button class="btn primary" data-act="bookNext">預約下次</button></div>
+    <button class="tour-link" data-act="clearPlan">移除這份計畫</button>
   </section>`;
 }
 
@@ -1383,7 +1396,7 @@ screens.coach = () => {
   const out = run.coachOut;
   page('居家動能保養計畫', `
     <section class="card">
-      <p class="eyebrow">店家／教練版</p>
+      <p class="eyebrow">店家／教練版　<button class="tour-link inline" data-go="store">看店家儀表板（示範）</button></p>
       <h3 class="card-title">幫顧客準備回家後的保養動作</h3>
       <p class="note">從動作庫挑 1–5 個動作，產生連結或 QR code 給顧客。顧客用手機打開，就會看到你的名字和這份計畫；每次開始前，系統會先做安全確認。</p>
       <label class="field">店名或單位<input id="cpStore" type="text" maxlength="20" value="${esc(cp.store)}" placeholder="例如：心動力運動工作室"></label>
@@ -1393,6 +1406,9 @@ screens.coach = () => {
       <h3 class="card-title">挑選動作（已選 ${sel.length}／5）</h3>
       ${Object.entries(groups).map(([g, list]) => `<p class="coach-group">${g}</p><div class="coach-list">${list.map(a => `<button class="coach-pick ${sel.includes(a.id) ? 'on' : ''}" data-coachpick="${a.id}"><b>${sel.includes(a.id) ? '✓ ' : ''}${esc(a.name)}</b><small>${a.level === 'seated' ? '坐姿' : '扶椅站姿'}・${esc(a.repsNote || '')}</small></button>`).join('')}</div>`).join('')}
       <label class="field">給顧客的一句話（選填）<input id="cpNote" type="text" maxlength="60" placeholder="例如：每天睡前做一次，慢慢來就好"></label>
+      <label class="field">完成 3 次居家保養的到店優惠（選填）<input id="cpOffer" type="text" maxlength="30" value="${esc(cp.offer || '')}" placeholder="例如：下次調理折 100 元"></label>
+      <label class="field">店家原本的預約連結（選填）<input id="cpBook" type="url" maxlength="300" value="${esc(cp.book || '')}" placeholder="FreeTime、inline、LINE 官方帳號或預約表單網址"></label>
+      <p class="note">沒有預約連結也沒關係：顧客會看到心動力的「示範預約」畫面。</p>
       <button class="btn primary big" data-act="genPlan">產生居家動能保養計畫</button>
       <p class="note">動作庫由團隊依運動醫學原則整理，正式使用前將請專業人員確認。只能從動作庫挑選，不能自行新增動作；本計畫為居家保養與活動陪伴，不是醫療處方，也不宣稱療效。</p>
     </section>
@@ -1417,6 +1433,106 @@ function drawQR(text) {
   sc.onload = draw; sc.onerror = () => { box.innerHTML = '<p class="note">目前無法顯示 QR code（需要網路），請使用下方連結。</p>'; };
   document.head.appendChild(sc);
 }
+
+// ---------- 示範預約：計算可預約時段（班表 − 既有預約 − 緩衝時間 − 暫時保留）----------
+const DEMO_SERVICES = [{ id: 'body60', name: '身體調理', min: 60, price: 1200 }, { id: 'body90', name: '身體調理', min: 90, price: 1700 }, { id: 'senior60', name: '銀髮肌力小班課', min: 60, price: 400 }];
+const BUFFER = 15;
+const fmtSlot = iso => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()}（${'日一二三四五六'[d.getDay()]}）${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function demoStaff(p) { return [p?.coach || '王教練', '陳師傅'].filter((v, i, arr) => arr.indexOf(v) === i); }
+// 示範班表：10:00–19:00；用日期當種子產生固定的「已被預約」時段，讓每天看起來不一樣
+function busyFor(staff, day) {
+  const seed = day.getDate() * 7 + staff.length * 3, busy = [];
+  [10, 13, 16].forEach((h, i) => { if ((seed + i) % 3 !== 0) busy.push([h * 60 + ((seed + i) % 2) * 30, h * 60 + ((seed + i) % 2) * 30 + 60]); });
+  (S.get().bookings || []).filter(b => b.staff === staff && S.dayKey(b.start) === S.dayKey(day)).forEach(b => { const d = new Date(b.start); busy.push([d.getHours() * 60 + d.getMinutes(), d.getHours() * 60 + d.getMinutes() + b.min]); });
+  return busy;
+}
+export function slotsFor(staffList, day, min, now = new Date()) {
+  const out = [];
+  for (let t = 10 * 60; t + min <= 19 * 60; t += 30) {
+    const start = new Date(day); start.setHours(0, t, 0, 0);
+    if (start <= new Date(now.getTime() + 60 * 60000)) continue;           // 1 小時內不開放
+    const free = staffList.filter(st => busyFor(st, day).every(([a, b]) => t + min + BUFFER <= a || t >= b + BUFFER));
+    if (free.length) out.push({ t, start: start.toISOString(), staff: free[0] });
+  }
+  return out;
+}
+
+screens.book = () => {
+  const p = S.get().plan, store = p?.store || '心動力運動工作室', staffAll = demoStaff(p);
+  const b = run.bk = run.bk || { svc: 'body60', staff: '', day: 1 };
+  const svc = DEMO_SERVICES.find(x => x.id === b.svc);
+  const day = new Date(); day.setDate(day.getDate() + b.day); day.setHours(0, 0, 0, 0);
+  const slots = slotsFor(b.staff ? [b.staff] : staffAll, day, svc.min);
+  const hold = run.hold && run.hold.until > Date.now() ? run.hold : null;
+  page('預約下次', `
+    <p class="tour-flag"><span>示範預約</span></p>
+    <p class="note">${esc(store)}｜正式上線時，可串接店家原本的預約系統，或使用心動力預約模組。</p>
+    <section class="card"><h3 class="card-title">1. 服務項目</h3>
+      <div class="coach-list">${DEMO_SERVICES.map(x => `<button class="coach-pick ${b.svc === x.id ? 'on' : ''}" data-bk="svc:${x.id}"><b>${x.name}</b><small>${x.min} 分鐘・NT$${x.price}</small></button>`).join('')}</div></section>
+    <section class="card"><h3 class="card-title">2. 服務人員</h3>
+      <div class="coach-list"><button class="coach-pick ${!b.staff ? 'on' : ''}" data-bk="staff:">不指定</button>${staffAll.map(n => `<button class="coach-pick ${b.staff === n ? 'on' : ''}" data-bk="staff:${esc(n)}">${esc(n)}</button>`).join('')}</div></section>
+    <section class="card"><h3 class="card-title">3. 日期與時段</h3>
+      <div class="day-row">${[1, 2, 3, 4, 5, 6, 7].map(i => { const d = new Date(); d.setDate(d.getDate() + i); return `<button class="day-chip ${b.day === i ? 'on' : ''}" data-bk="day:${i}">${d.getMonth() + 1}/${d.getDate()}<small>${'日一二三四五六'[d.getDay()]}</small></button>`; }).join('')}</div>
+      <div class="slot-grid">${slots.length ? slots.map(s => `<button class="slot ${hold && hold.start === s.start ? 'on' : ''}" data-slot="${s.start}|${esc(s.staff)}">${String(Math.floor(s.t / 60)).padStart(2, '0')}:${String(s.t % 60).padStart(2, '0')}</button>`).join('') : '<p class="note">這天已經額滿，換一天看看。</p>'}</div>
+      <p class="note">時段已扣除服務人員既有預約與前後 ${BUFFER} 分鐘清潔休息時間。</p></section>
+    ${hold ? `<section class="card hold-card"><p>⏳ 已為你保留 <b>${fmtSlot(hold.start)}</b>（${esc(hold.staff)}），請在 <b id="holdLeft"></b> 內確認。</p>
+      <button class="btn primary big" data-act="confirmBook">確認預約（${svc.name} ${svc.min} 分鐘）</button><p class="note">示範版不收費；正式版可選擇到店付款或線上付定金。</p></section>` : ''}
+  `, { back: 'today' });
+  if (hold) { clearInterval(run.holdTick); const tick = () => { const s = Math.max(0, Math.round((hold.until - Date.now()) / 1000)); const el = $('#holdLeft'); if (el) el.textContent = `${Math.floor(s / 60)} 分 ${String(s % 60).padStart(2, '0')} 秒`; if (!s) { clearInterval(run.holdTick); run.hold = null; if (currentScreen === 'book') screens.book(); } }; tick(); run.holdTick = setInterval(tick, 1000); }
+};
+
+screens.booked = () => {
+  const bk = run.lastBooking; if (!bk) return go('today');
+  page('預約成功', `
+    <section class="flex-card">
+      <div class="flex-head">✓ 預約成功</div>
+      <div class="flex-body"><p class="flex-store">${esc(bk.store)}</p><h3>${fmtSlot(bk.start)}</h3>
+        <p>${esc(bk.service)}｜${esc(bk.staff)}</p><p class="note">出發前記得完成今天的居家保養，會更有效喔！</p></div>
+    </section>
+    <p class="note center">↑ 正式版會用 LINE 傳送這張確認卡片，並在前一天提醒。</p>
+    <button class="btn line-btn" data-act="bookICS">加到手機行事曆</button>
+    <button class="btn" data-go="today">回首頁</button>
+  `, { back: 'today' });
+  petSay(`太好了！${fmtSlot(bk.start)}要去${bk.store}，我會提醒你！`, { ms: 6000 });
+};
+
+function bookingInfo() {
+  const p = S.get().plan; if (!p) return '';
+  const nb = (S.get().bookings || []).filter(b => b.store === p.store && new Date(b.start) > new Date()).sort((x, y) => x.start.localeCompare(y.start))[0];
+  return nb ? `<p class="plan-offer">📅 下次預約：<b>${fmtSlot(nb.start)}</b>（${esc(nb.service)}・${esc(nb.staff)}）</p>` : '';
+}
+
+// ---------- 店家儀表板（示範）：讓評審看見店家每天會用到什麼 ----------
+const DEMO_CLIENTS = [
+  { name: '林阿姨', age: 72, plan: '肩頸放鬆、擴胸伸展', week: 5, last: '昨天', next: '11/15 14:00' },
+  { name: '張伯伯', age: 68, plan: '坐姿抬腿、扶椅起立', week: 6, last: '今天', next: '11/14 10:30' },
+  { name: '陳小姐', age: 55, plan: '坐姿腰背伸展', week: 2, last: '3 天前', next: '' },
+  { name: '黃阿公', age: 79, plan: '腳踝上下動、坐姿踏步', week: 0, last: '8 天前', next: '' },
+  { name: '吳媽媽', age: 64, plan: '坐姿髖部舒緩、肩頸放鬆', week: 4, last: '今天', next: '11/18 16:00' },
+];
+screens.store = () => {
+  const p = S.get().plan, mine = S.get().bookings || [];
+  const clients = DEMO_CLIENTS.map(c => ({ ...c }));
+  if (p) { const w = planWeek(p); clients[0].week = w.count; const nb = mine.filter(b => new Date(b.start) > new Date()).sort((x, y) => x.start.localeCompare(y.start))[0]; if (nb) clients[0].next = fmtSlot(nb.start); }
+  const quiet = clients.filter(c => c.week === 0 || /\d+ 天前/.test(c.last) && parseInt(c.last) >= 7);
+  const today = new Date(), todayAppts = [['10:00', '張伯伯', '銀髮肌力小班課'], ['13:30', '吳媽媽', '身體調理 60 分'], ['16:00', '新客人', '身體調理 90 分']];
+  page('店家儀表板', `
+    <p class="tour-flag"><span>示範資料</span></p>
+    <section class="card"><p class="eyebrow">${esc(p?.store || '心動力運動工作室')}・${today.getMonth() + 1}/${today.getDate()}</p>
+      <div class="stats3"><div><b>${todayAppts.length + mine.filter(b => S.dayKey(b.start) === S.dayKey()).length}</b><span>今日預約</span></div><div><b>${clients.filter(c => c.week > 0).length}/${clients.length}</b><span>本週有在家練習</span></div><div><b>${quiet.length}</b><span>需要關心</span></div></div></section>
+    <section class="card"><h3 class="card-title">📅 今日預約</h3>
+      ${todayAppts.map(([t, n, s]) => `<div class="contact-row"><span><b>${t}</b>　${n}・${s}</span></div>`).join('')}
+      ${mine.filter(b => new Date(b.start) > new Date()).map(b => `<div class="contact-row new"><span><b>${fmtSlot(b.start)}</b>　${esc(S.get().profile.name || '顧客')}・${esc(b.service)}（剛從 APP 預約）</span></div>`).join('')}
+    </section>
+    <section class="card"><h3 class="card-title">🧘 顧客居家保養追蹤</h3>
+      <div class="client-list">${clients.map(c => `<div class="client ${c.week === 0 ? 'quiet' : ''}"><div><b>${c.name}</b>（${c.age}）<small>${c.plan}</small></div><div class="client-meta"><span>本週 <b>${c.week}</b> 次</span><span>最後練習：${c.last}</span><span>${c.next ? `下次：${c.next}` : '<em>尚未預約</em>'}</span></div></div>`).join('')}</div>
+      <p class="note">${quiet.map(c => c.name).join('、') || '沒有人'} 這週還沒練習，可以傳一則關心訊息或邀請預約。</p>
+      <button class="btn" data-go="coach">＋ 派送新的居家動能保養計畫</button></section>
+    <section class="card"><h3 class="card-title">為什麼店家需要這個？</h3>
+      <ul class="rules"><li>不用一個一個傳影片、講義：30 秒派送居家計畫</li><li>知道誰回家有練、誰需要關心</li><li>居家練習 → 到店優惠 → 預約下次，提升回流</li><li>每位顧客開始前都有安全確認，店家更安心</li></ul>
+      <p class="note">本頁為示範資料。正式版需要後端資料庫與店家登入，將於決審後開發。</p></section>
+  `, { back: 'today' });
+};
 
 // ---------- 心靈湖畔 ----------
 screens.lake = () => {
@@ -1738,6 +1854,20 @@ const actions = {
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
   findParks: loadParks,
+  bookNext: () => { const p = S.get().plan; if (p && p.book) { window.open(p.book, '_blank', 'noopener'); return; } run.hold = null; go('book'); },
+  confirmBook: () => {
+    const h = run.hold; if (!h || h.until < Date.now()) { alert('保留時間已過，請重新選擇時段。'); run.hold = null; return screens.book(); }
+    const svc = DEMO_SERVICES.find(x => x.id === run.bk.svc), p = S.get().plan;
+    const bk = { store: p?.store || '心動力運動工作室', staff: h.staff, service: `${svc.name} ${svc.min} 分`, min: svc.min, start: h.start, at: new Date().toISOString() };
+    const s = S.get(); s.bookings = [...(s.bookings || []), bk].slice(-20); S.save();
+    clearInterval(run.holdTick); run.hold = null; run.lastBooking = bk; go('booked');
+  },
+  bookICS: () => {
+    const bk = run.lastBooking; if (!bk) return;
+    const d = new Date(bk.start), e = new Date(d.getTime() + bk.min * 60000), f = x => x.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MoveMind AI//Booking//ZH-TW', 'BEGIN:VEVENT', `UID:${Date.now()}@movemind`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(d)}`, `DTEND:${f(e)}`, `SUMMARY:${bk.store}｜${bk.service}`, 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:明天要到店喔', 'TRIGGER:-P1D', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    const a2 = document.createElement('a'); a2.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a2.download = '預約.ics'; document.body.appendChild(a2); a2.click(); a2.remove();
+  },
   holdStart: () => {
     if (run.holding) return;
     const a = run.activity; if (!a || !a.hold) return;
@@ -1756,10 +1886,12 @@ const actions = {
   },
   genPlan: () => {
     const store = $('#cpStore').value.trim(), coach = $('#cpCoach').value.trim(), note = $('#cpNote').value.trim(), items = run.coachSel || [];
+    const offer = $('#cpOffer').value.trim(), book = $('#cpBook').value.trim();
+    if (book && !/^https:\/\//.test(book)) { alert('預約連結請以 https:// 開頭。'); return; }
     if (!items.length) { alert('請至少挑選 1 個動作。'); return; }
     if (!store && !coach) { alert('請填寫店名或教練稱呼，顧客才知道是誰準備的。'); return; }
-    S.get().coachProfile = { store, coach }; S.save();
-    run.coachOut = planURL({ store, coach, note, items });
+    S.get().coachProfile = { store, coach, offer, book }; S.save();
+    run.coachOut = planURL({ store, coach, note, items, offer, book });
     screens.coach(); setTimeout(() => $('#coachOut')?.scrollIntoView({ behavior: 'smooth' }), 50);
   },
   copyPlan: async () => { try { await navigator.clipboard.writeText(run.coachOut); alert('已複製連結！'); } catch (e) { prompt('請複製這個連結：', run.coachOut); } },
@@ -1767,7 +1899,8 @@ const actions = {
     const p = S.get().plan; if (!p) return;
     const w = planWeek(p), name = S.get().profile.name || '我';
     const lines = p.items.map(id => `・${C.ACTIVITIES.find(x => x.id === id).name}：${w.byId(id)} 次`).join('\n');
-    const text = `【心動力 居家動能保養回報】\n${name}這 7 天完成 ${w.count} 次、共 ${w.days} 天：\n${lines}\n謝謝${p.coach || '教練'}的安排！`;
+    const nb = (S.get().bookings || []).find(b => b.store === p.store && new Date(b.start) > new Date());
+    const text = `【心動力 居家動能保養回報】\n${name}這 7 天完成 ${w.count} 次、共 ${w.days} 天：\n${lines}\n${nb ? `下次預約：${fmtSlot(nb.start)}（${nb.service}）\n` : ''}謝謝${p.coach || '教練'}的安排！`;
     window.open(lineURL(text), '_blank', 'noopener');
   },
   clearPlan: () => { if (!confirm('移除這份居家動能保養計畫？')) return; S.get().plan = null; S.save(); go(currentScreen); },
@@ -1911,6 +2044,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.chip) return sendChat(d.chip);
+  if (d.bk) { const [k, v] = d.bk.split(':'); run.bk[k] = k === 'day' ? Number(v) : v; run.hold = null; return screens.book(); }
+  if (d.slot) { const [start, staff] = d.slot.split('|'); run.hold = { start, staff, until: Date.now() + 10 * 60000 }; screens.book(); setTimeout(() => document.querySelector('.hold-card')?.scrollIntoView({ behavior: 'smooth' }), 50); return; }
   if (d.coachpick) {
     const sel = run.coachSel = run.coachSel || [];
     const i = sel.indexOf(d.coachpick);
@@ -2168,10 +2303,10 @@ if (IN_LINE && !/openExternalBrowser=1/.test(location.search)) {
 }
 const start = location.hash.slice(1);
 const gotPlan = importPlanFromURL();
-if (start === 'coach') go('coach');
+if (start === 'coach' || start === 'store') go(start);
 else if (start === 'demo') { S.loadDemo(); setFont(); history.replaceState(null, '', location.pathname); go('today'); }
 else if (!S.get().profile.screening.done) go('welcome');
-else go(screens[start] && start !== 'coach' ? start : 'today');
+else go(screens[start] && !['coach', 'store', 'booked'].includes(start) ? start : 'today');
 if (gotPlan && run.planNew && S.get().profile.screening.done) setTimeout(() => { const p = S.get().plan; petSay(`${petCall()}，這是${planFrom(p)}幫你準備的居家動能保養計畫喔！一起做吧！`, { ms: 9000 }); }, 9000);
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
