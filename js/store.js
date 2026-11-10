@@ -137,6 +137,10 @@ export function loadDemo() {
     { at: new Date(Date.now() - 2 * 864e5).toISOString(), text: '今天林阿姨帶我走了 1.1 公里，路上聞到好香的花！' },
     { at: new Date(Date.now() - 864e5).toISOString(), text: '林阿姨陪我做了「坐姿抬腿」，我跟著數數，好開心！' },
   ];
+  // 示範用：一份教練派送的居家動能保養計畫（含 3 天、5 次練習），方便展示「回報給教練」
+  const ago = (d, h) => new Date(Date.now() - d * 864e5 - h * 36e5).toISOString();
+  state.plan = { store: '心動力運動工作室', coach: '王教練', note: '每天睡前做一次，慢慢來就好', items: ['neck-relax', 'chest-open', 'seated-knee'], at: ago(4, 0),
+    log: [{ at: ago(3, 2), id: 'neck-relax' }, { at: ago(3, 1), id: 'chest-open' }, { at: ago(2, 2), id: 'neck-relax' }, { at: ago(2, 1), id: 'chest-open' }, { at: ago(1, 2), id: 'seated-knee' }] };
   state.reminders = [{ id: 'rdemo1', kind: 'med', label: '血壓藥（示範）', time: '08:00' }, { id: 'rdemo2', kind: 'water', label: '喝一口水', time: '10:00' }, { id: 'rdemo3', kind: 'move', label: '起來動一動', time: '15:00' }];
   const moods = ['ok', 'tired', 'good', 'ok', 'good', 'good'];
   const plan = [['seated-knee', 'home', 10], ['walk', 'walk', 0.8], ['seated-march', 'home', 20], ['sit-to-stand', 'home', 8], ['walk', 'walk', 1.1], ['arm-circle', 'home', 10]];

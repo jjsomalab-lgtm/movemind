@@ -106,7 +106,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v12.0（2026-11-11）';
+export const APP_VERSION = 'v12.1（2026-11-11）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
