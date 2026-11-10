@@ -22,6 +22,8 @@ const blank = () => ({
   pet: { treats: 0, spent: 0, bonus: 0, love: 0, needsToday: 0, needsDate: '' },   // 心動夥伴：點心數、用掉的點數、小願望獎勵、親密度
   meditations: [],         // 靜坐 { at, minutes }
   petDiary: [],            // 寵物日記 { at, text }
+  plan: null,              // 居家動能保養計畫 { store, coach, note, items[], at, log[{at,id}] }
+  coachProfile: { store: '', coach: '' }, // 店家／教練端記住的名稱
   reminders: [],           // 生活提醒 { id, kind, label, time }
   reminderLog: {},         // { '2026-11-09_r1': 'done' | 'later' }
   today: { date: '', mood: null, check: null, allowed: null },

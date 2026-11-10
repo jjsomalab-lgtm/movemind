@@ -59,6 +59,35 @@ export const ACTIVITIES = [
     caution: '全程扶著椅背。覺得身體晃，先坐下休息，再改做坐姿踏步。',
     easier: '改做坐姿踏步。',
   },
+  // ---------- 伸展保養（保持型：每次保持 15 秒，共 3 次；不使用鏡頭計數）----------
+  {
+    id: 'neck-relax', name: '肩頸放鬆', level: 'seated', minutes: 2, reps: 3, hold: 15, repsNote: '每次保持 15 秒，共 3 次', pose: false, body: '肩頸',
+    goal: '放鬆久坐、低頭造成的肩頸緊繃',
+    cues: ['坐穩，背挺直，雙手輕放在大腿上。', '頭慢慢往右側傾，右耳靠近右肩，左肩放鬆往下。', '保持 15 秒，慢慢回正，再換左邊。'],
+    caution: '動作要慢，只伸展到「有點緊」就好，不要用手壓頭。頭暈或手麻就停止。',
+    easier: '頭只傾一點點，保持的時間縮短到 10 秒。',
+  },
+  {
+    id: 'chest-open', name: '擴胸伸展', level: 'seated', minutes: 2, reps: 3, hold: 15, repsNote: '每次保持 15 秒，共 3 次', pose: false, body: '胸背',
+    goal: '打開胸口，改善駝背、讓呼吸更順',
+    cues: ['坐在椅子前半段，背挺直。', '雙手慢慢往兩側打開，手肘微彎，胸口往前挺。', '保持 15 秒，慢慢呼吸，再把手放回來。'],
+    caution: '肩膀會痛的話，手不要打太開。不要憋氣。',
+    easier: '雙手放在腰後，只把胸口輕輕往前挺。',
+  },
+  {
+    id: 'back-stretch', name: '坐姿腰背伸展', level: 'seated', minutes: 2, reps: 3, hold: 15, repsNote: '每次保持 15 秒，共 3 次', pose: false, body: '腰背',
+    goal: '舒展久坐後緊繃的腰背',
+    cues: ['坐穩，雙腳打開與肩同寬，平踩地面。', '身體慢慢往前彎，雙手沿著大腿往膝蓋滑下去。', '保持 15 秒，再慢慢用手撐著大腿坐直。'],
+    caution: '往前彎只到舒服的地方，不要彎到頭很低。頭暈、腰痛加劇就停止，慢慢坐直。',
+    easier: '只往前彎一點點，手停在大腿中間就好。',
+  },
+  {
+    id: 'hip-relax', name: '坐姿髖部舒緩', level: 'seated', minutes: 2, reps: 3, hold: 15, repsNote: '每次保持 15 秒，共 3 次', pose: false, body: '髖部',
+    goal: '舒緩髖部，讓走路、上下車更輕鬆',
+    cues: ['坐在椅子前半段，雙腳平踩地面。', '右膝慢慢往外側打開，腳掌外側貼地，感覺大腿內側在伸展。', '保持 15 秒，慢慢收回，再換左邊。'],
+    caution: '髖關節或膝蓋會痛的話，打開的角度小一點；曾做過髖關節手術，請先問過醫師再做。',
+    easier: '膝蓋只往外打開一點點。',
+  },
 ];
 
 // 首次使用健康篩選：參考 PAR-Q+ 精神改寫之初稿，非正式量表
@@ -255,3 +284,10 @@ export const BADGES = [
   { id: 'ten-moves', name: '十次的累積', desc: '累積完成 10 次活動', icon: '🌳' },
   { id: 'three-days', name: '這週有在照顧自己', desc: '一週內有 3 天有活動或練習', icon: '☀️' },
 ];
+
+// 動作庫的部位分類（教練／店家挑選居家動能保養計畫時使用）
+export const BODY_OF = {
+  'seated-knee': '腿部', 'seated-march': '腿部', 'arm-circle': '肩膀', 'seated-twist': '腰背', 'ankle-pump': '循環',
+  'sit-to-stand': '腿部', 'heel-raise': '腿部', 'stand-march': '平衡',
+  'neck-relax': '肩頸', 'chest-open': '胸背', 'back-stretch': '腰背', 'hip-relax': '髖部',
+};

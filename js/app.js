@@ -50,7 +50,7 @@ function setFont() {
 }
 
 // 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
-const NO_LINE = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday'];
+const NO_LINE = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday', 'coach'];
 function lineHeaderBtn() {
   if (NO_LINE.includes(currentScreen)) return '';
   if (!C.lineReady()) return `<button class="line-top" data-go="chat" aria-label="跟小夥伴聊聊">${icon('chat')}<span>聊聊</span></button>`;
@@ -106,7 +106,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v11.4（2026-11-10）';
+export const APP_VERSION = 'v12.0（2026-11-11）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -128,7 +128,7 @@ function petals(n = 16) {
 }
 
 // 心動夥伴：每一頁都在，依畫面說不同的話；點寵物進小屋；按住麥克風跟牠說話
-const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday'];
+const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday', 'coach'];
 function petName() { const p = S.get().profile; return p.petType ? (p.petName || PETS[p.petType].name) : '小夥伴'; }
 function petCall() { const p = S.get().profile; return p.petCall || p.name || '你'; }
 function petBar() { return ''; }
@@ -178,6 +178,7 @@ export function go(name, ...args) {
 
 function cleanup() {
   stopSpeaking();
+  if (run.holdTimer) { clearInterval(run.holdTimer); run.holdTimer = null; run.holding = false; }
   if (run.medTimer) { clearInterval(run.medTimer); run.medTimer = null; stopMusic(); }
   if (run.breathTimer) { clearTimeout(run.breathTimer); run.breathTimer = null; }
   if (run.pose) { import('./pose.js').then(m => m.stopPose()); run.pose = false; }
@@ -389,6 +390,7 @@ screens.today = () => {
   page('首頁', `
     ${s.demo ? `<p class="tour-flag"><span>示範旅程</span><button data-act="endDemo">結束示範</button></p>` : ''}
     ${heroScene}
+    ${planCard()}
     <section class="task-card float">
       <p class="eyebrow">今日任務</p>
       <h3>${esc(task.title)}</h3>
@@ -498,6 +500,10 @@ function finishCheck() {
   s.today.check = { ...a }; s.today.allowed = allowed; S.save();
   if (allowed === 'none') return go('stopToday');
   const next = run.afterCheck || 'activities'; run.afterCheck = null;
+  if (run.pendingActivity) {
+    const pa = C.ACTIVITIES.find(x => x.id === run.pendingActivity); run.pendingActivity = null;
+    if (pa && (allowed === 'standard' || pa.level === 'seated')) return go('player', pa.id);
+  }
   go(next);
 }
 
@@ -547,6 +553,7 @@ screens.activities = () => {
     ? (effectiveLevel() === 'seated' ? '依照健康小問題的結果，目前先做坐著的溫和動作。' : '依照今天的回答，先做坐著的溫和動作。')
     : assisted ? '坐著的活動可以自己做；扶著椅子的活動請在有人陪同時進行。' : '今天可以做坐著或扶著椅子的活動。';
   page('活力森林', `${banner}
+    ${planCard()}
     <p class="lead-note">${lead}</p>
     ${seatedOnly && effectiveLevel() !== 'seated' ? redoLink() : ''}
     ${seatedOnly && t.mood === 'tired' ? '<button class="tour-link" data-act="changeMood">心情好一點了嗎？更改今天的心情</button>' : ''}
@@ -587,13 +594,14 @@ screens.player = id => {
     </div>
     <p class="caution">${esc(a.caution)}</p>
     <p class="easier"><b>覺得太難：</b>${esc(a.easier)}</p>
-    <div class="counter" aria-live="polite"><span id="reps">0</span><small>/ ${a.reps} 下</small><span class="reps-note">${esc(a.repsNote || '')}</span></div>
+    ${planBadge(a.id)}
+    <div class="counter" aria-live="polite"><span id="reps">0</span><small>/ ${a.reps} ${a.hold ? '次' : '下'}</small><span class="reps-note">${esc(a.repsNote || '')}</span></div>
     <div id="poseBox" class="pose-box" hidden>
       <video id="cam" playsinline muted></video><canvas id="overlay"></canvas>
       <p id="poseStatus" class="pose-status"></p>
     </div>
-    <button class="btn huge primary" data-act="rep">完成一下</button>
-    <button class="btn ghost" data-act="pose" id="poseBtn">開鏡頭幫我數</button>
+    ${a.hold ? `<button class="btn huge primary" data-act="holdStart" id="holdBtn">開始保持 ${a.hold} 秒</button>` : '<button class="btn huge primary" data-act="rep">完成一下</button>'}
+    ${a.pose === false ? '' : '<button class="btn ghost" data-act="pose" id="poseBtn">開鏡頭幫我數</button>'}
     <button class="btn" data-act="finishActivity">做完了</button>
   `, { back: 'activities' });
   speak(`我們來做${a.name}。${a.cues.join('')}${a.caution}`);
@@ -605,6 +613,7 @@ function addRep() {
   el.textContent = run.reps;
   const target = run.activity.reps;
   if (run.reps === target) speak('完成了！做得很好！');
+  else if (run.activity.hold) speak(`第 ${run.reps} 次完成，休息一下，準備好再開始。`);
   else if (run.reps === Math.ceil(target / 2)) speak(`${run.reps}下，已經一半了，很棒！`);
   else speak(String(run.reps));
 }
@@ -633,7 +642,10 @@ async function togglePose() {
 function finishActivity() {
   const a = run.activity;
   if (run.pose) { import('./pose.js').then(m => m.stopPose()); run.pose = false; }
-  if (run.reps === 0) { go('activities'); return; }
+  if (run.holdTimer) { clearInterval(run.holdTimer); run.holdTimer = null; run.holding = false; }
+  if (run.reps === 0) { go(S.get().plan ? 'today' : 'activities'); return; }
+  const pl = S.get().plan;
+  if (pl && pl.items.includes(a.id)) { pl.log = [...(pl.log || []), { at: new Date().toISOString(), id: a.id }].slice(-200); S.save(); }
   const before = S.get().garden.plots.map(p => p.stage);
   S.addSession({ type: 'home', activityId: a.id, name: a.name, reps: run.reps, minutes: a.minutes });
   const homeCount = S.get().sessions.filter(x => x.type === 'home').length;
@@ -1323,6 +1335,89 @@ function reminderPop() {
     <div class="grid2"><button class="btn primary" data-remdone="${r.id}">${r.kind === 'med' ? '吃過了' : '好了'}</button><button class="btn" data-remlater="${r.id}">等一下再提醒</button></div></div></div>`;
 }
 
+// ---------- 居家動能保養計畫（教練／店家 → 顧客）----------
+// 計畫內容放在網址裡（不需要後端）：?plan=<base64url(JSON)>
+const b64e = obj => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = s => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0))));
+function planURL(p) { return `${location.origin}${location.pathname}?openExternalBrowser=1&plan=${b64e({ s: p.store, c: p.coach, n: p.note, i: p.items })}`; }
+function importPlanFromURL() {
+  const q = new URLSearchParams(location.search).get('plan'); if (!q) return false;
+  try {
+    const d = b64d(q), ids = (d.i || []).filter(id => C.ACTIVITIES.some(x => x.id === id)).slice(0, 8);
+    if (!ids.length) return false;
+    const s = S.get(), old = s.plan;
+    const same = old && old.store === d.s && old.coach === d.c && JSON.stringify(old.items) === JSON.stringify(ids);
+    s.plan = { store: String(d.s || '').slice(0, 20), coach: String(d.c || '').slice(0, 12), note: String(d.n || '').slice(0, 60), items: ids, at: same ? old.at : new Date().toISOString(), log: same ? old.log : [] };
+    S.save(); run.planNew = !same;
+    const u = new URL(location.href); u.searchParams.delete('plan'); history.replaceState(null, '', u.pathname + u.search + u.hash);
+    return true;
+  } catch (e) { return false; }
+}
+const planFrom = p => [p.store, p.coach].filter(Boolean).join('・') || '你的教練';
+function planWeek(p) {
+  const since = Date.now() - 7 * 864e5, wk = (p.log || []).filter(x => new Date(x.at).getTime() >= since);
+  const today = S.dayKey(), doneToday = new Set((p.log || []).filter(x => S.dayKey(x.at) === today).map(x => x.id));
+  return { count: wk.length, days: new Set(wk.map(x => S.dayKey(x.at))).size, doneToday, byId: id => wk.filter(x => x.id === id).length };
+}
+function planBadge(id) {
+  const p = S.get().plan; if (!p || !p.items.includes(id)) return '';
+  return `<p class="plan-badge">🧘 ${esc(planFrom(p))} 為你安排的居家動能保養</p>`;
+}
+function planCard() {
+  const p = S.get().plan; if (!p) return '';
+  const w = planWeek(p);
+  return `<section class="plan-card">
+    <p class="eyebrow">居家動能保養計畫</p>
+    <h3>${esc(planFrom(p))} 為你準備的</h3>
+    ${p.note ? `<p class="plan-note">「${esc(p.note)}」</p>` : ''}
+    <div class="plan-items">${p.items.map(id => { const a = C.ACTIVITIES.find(x => x.id === id); return `<button class="plan-item ${w.doneToday.has(id) ? 'done' : ''}" data-planact="${id}"><span>${w.doneToday.has(id) ? '✓' : '○'}</span><b>${esc(a.name)}</b><small>${esc(a.repsNote || '')}</small></button>`; }).join('')}</div>
+    <p class="note">這 7 天完成 <b>${w.count}</b> 次、共 <b>${w.days}</b> 天。動作開始前，會先做安全確認。</p>
+    <div class="grid2"><button class="btn line-btn" data-act="reportPlan">回報給${esc(p.coach || '教練')}</button><button class="btn ghost" data-act="clearPlan">移除這份計畫</button></div>
+  </section>`;
+}
+
+screens.coach = () => {
+  const cp = S.get().coachProfile || { store: '', coach: '' }, sel = run.coachSel || [];
+  const groups = {};
+  C.ACTIVITIES.forEach(a => { const g = C.BODY_OF[a.id] || '其他'; (groups[g] = groups[g] || []).push(a); });
+  const out = run.coachOut;
+  page('居家動能保養計畫', `
+    <section class="card">
+      <p class="eyebrow">店家／教練版</p>
+      <h3 class="card-title">幫顧客準備回家後的保養動作</h3>
+      <p class="note">從動作庫挑 1–5 個動作，產生連結或 QR code 給顧客。顧客用手機打開，就會看到你的名字和這份計畫；每次開始前，系統會先做安全確認。</p>
+      <label class="field">店名或單位<input id="cpStore" type="text" maxlength="20" value="${esc(cp.store)}" placeholder="例如：心動力運動工作室"></label>
+      <label class="field">教練或師傅的稱呼<input id="cpCoach" type="text" maxlength="12" value="${esc(cp.coach)}" placeholder="例如：王教練"></label>
+    </section>
+    <section class="card">
+      <h3 class="card-title">挑選動作（已選 ${sel.length}／5）</h3>
+      ${Object.entries(groups).map(([g, list]) => `<p class="coach-group">${g}</p><div class="coach-list">${list.map(a => `<button class="coach-pick ${sel.includes(a.id) ? 'on' : ''}" data-coachpick="${a.id}"><b>${sel.includes(a.id) ? '✓ ' : ''}${esc(a.name)}</b><small>${a.level === 'seated' ? '坐姿' : '扶椅站姿'}・${esc(a.repsNote || '')}</small></button>`).join('')}</div>`).join('')}
+      <label class="field">給顧客的一句話（選填）<input id="cpNote" type="text" maxlength="60" placeholder="例如：每天睡前做一次，慢慢來就好"></label>
+      <button class="btn primary big" data-act="genPlan">產生居家動能保養計畫</button>
+      <p class="note">動作庫由團隊依運動醫學原則整理，正式使用前將請專業人員確認。只能從動作庫挑選，不能自行新增動作；本計畫為居家保養與活動陪伴，不是醫療處方，也不宣稱療效。</p>
+    </section>
+    ${out ? `<section class="card" id="coachOut">
+      <h3 class="card-title">已產生！傳給顧客吧</h3>
+      <div id="qr" class="qr-box" aria-label="計畫 QR code"></div>
+      <p class="plan-link">${esc(out)}</p>
+      <div class="grid2"><a class="btn line-btn" href="${lineURL(`${planFrom({ store: cp.store, coach: cp.coach })}為你準備了居家動能保養計畫，點這裡開始：\n${out}`)}" target="_blank" rel="noopener">用 LINE 傳給顧客</a><button class="btn" data-act="copyPlan">複製連結</button></div>
+      <a class="btn ghost" href="${esc(out)}" target="_blank" rel="noopener">預覽顧客看到的畫面</a>
+    </section>` : ''}
+  `, { back: 'today' });
+  if (out) drawQR(out);
+};
+
+// QR code：使用 cdnjs 的 qrcodejs（只在店家頁載入）；載入失敗時仍可用連結
+function drawQR(text) {
+  const box = $('#qr'); if (!box) return;
+  const draw = () => { box.innerHTML = ''; try { new window.QRCode(box, { text, width: 220, height: 220, correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) { box.innerHTML = '<p class="note">QR code 產生失敗，請使用下方連結。</p>'; } };
+  if (window.QRCode) return draw();
+  const sc = document.createElement('script');
+  sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  sc.onload = draw; sc.onerror = () => { box.innerHTML = '<p class="note">目前無法顯示 QR code（需要網路），請使用下方連結。</p>'; };
+  document.head.appendChild(sc);
+}
+
 // ---------- 心靈湖畔 ----------
 screens.lake = () => {
   const s = S.get();
@@ -1643,6 +1738,39 @@ const actions = {
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
   findParks: loadParks,
+  holdStart: () => {
+    if (run.holding) return;
+    const a = run.activity; if (!a || !a.hold) return;
+    if (run.reps >= a.reps) { speak('都做完了，按「做完了」就可以囉！'); return; }
+    run.holding = true; let t = a.hold; const btn = $('#holdBtn');
+    if (btn) { btn.textContent = `保持中…${t}`; btn.classList.add('holding'); }
+    speak('保持住，慢慢呼吸。');
+    run.holdTimer = setInterval(() => {
+      t -= 1; const b = $('#holdBtn'); if (b) b.textContent = t > 0 ? `保持中…${t}` : '好，放鬆！';
+      if (t === 5) speak('再五秒。');
+      if (t <= 0) {
+        clearInterval(run.holdTimer); run.holdTimer = null; run.holding = false; addRep();
+        if (b) { b.classList.remove('holding'); b.textContent = run.reps >= a.reps ? '都做完了！' : `休息一下，再保持 ${a.hold} 秒`; }
+      }
+    }, 1000);
+  },
+  genPlan: () => {
+    const store = $('#cpStore').value.trim(), coach = $('#cpCoach').value.trim(), note = $('#cpNote').value.trim(), items = run.coachSel || [];
+    if (!items.length) { alert('請至少挑選 1 個動作。'); return; }
+    if (!store && !coach) { alert('請填寫店名或教練稱呼，顧客才知道是誰準備的。'); return; }
+    S.get().coachProfile = { store, coach }; S.save();
+    run.coachOut = planURL({ store, coach, note, items });
+    screens.coach(); setTimeout(() => $('#coachOut')?.scrollIntoView({ behavior: 'smooth' }), 50);
+  },
+  copyPlan: async () => { try { await navigator.clipboard.writeText(run.coachOut); alert('已複製連結！'); } catch (e) { prompt('請複製這個連結：', run.coachOut); } },
+  reportPlan: () => {
+    const p = S.get().plan; if (!p) return;
+    const w = planWeek(p), name = S.get().profile.name || '我';
+    const lines = p.items.map(id => `・${C.ACTIVITIES.find(x => x.id === id).name}：${w.byId(id)} 次`).join('\n');
+    const text = `【心動力 居家動能保養回報】\n${name}這 7 天完成 ${w.count} 次、共 ${w.days} 天：\n${lines}\n謝謝${p.coach || '教練'}的安排！`;
+    window.open(lineURL(text), '_blank', 'noopener');
+  },
+  clearPlan: () => { if (!confirm('移除這份居家動能保養計畫？')) return; S.get().plan = null; S.save(); go(currentScreen); },
   bathMode: () => { run.bath = true; go('petHome'); petVoice('洗澎澎囉！用手指幫我搓一搓～'); },
   bathDone: () => {
     if (!run.bath) return; run.bath = false;
@@ -1783,6 +1911,20 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.chip) return sendChat(d.chip);
+  if (d.coachpick) {
+    const sel = run.coachSel = run.coachSel || [];
+    const i = sel.indexOf(d.coachpick);
+    if (i >= 0) sel.splice(i, 1); else if (sel.length < 5) sel.push(d.coachpick); else { alert('最多挑選 5 個動作。'); return; }
+    run.coachOut = null; const y = window.scrollY; screens.coach(); window.scrollTo(0, y); return;
+  }
+  if (d.planact) {
+    const t = S.get().today;
+    if (!t.allowed) { run.pendingActivity = d.planact; run.afterCheck = 'activities'; return actions.startActivity(); }
+    const pa = C.ACTIVITIES.find(x => x.id === d.planact);
+    if (t.allowed === 'none') return go('stopToday');
+    if (t.allowed === 'seated' && pa.level !== 'seated') { alert('依照今天的回答，先做坐著的動作喔。'); return go('activities'); }
+    return go('player', d.planact);
+  }
   if (d.buy) {
     const it = SHOP.find(x => x.id === d.buy), s = S.get(), st = petStats(s);
     if (st.points < it.cost) { run.petMsg = `還差 ${it.cost - st.points} 點～一起運動或散步就能賺點數！`; return go('petHome'); }
@@ -2022,12 +2164,15 @@ setFont();
 S.ensureToday();
 // 從 LINE 打開時，自動改用手機瀏覽器開啟（LINE 支援 openExternalBrowser=1）
 if (IN_LINE && !/openExternalBrowser=1/.test(location.search)) {
-  location.replace(`${location.origin}${location.pathname}?openExternalBrowser=1${location.hash}`);
+  const u = new URL(location.href); u.searchParams.set('openExternalBrowser', '1'); location.replace(u.toString());
 }
 const start = location.hash.slice(1);
-if (start === 'demo') { S.loadDemo(); setFont(); history.replaceState(null, '', location.pathname); go('today'); }
+const gotPlan = importPlanFromURL();
+if (start === 'coach') go('coach');
+else if (start === 'demo') { S.loadDemo(); setFont(); history.replaceState(null, '', location.pathname); go('today'); }
 else if (!S.get().profile.screening.done) go('welcome');
-else go(screens[start] ? start : 'today');
+else go(screens[start] && start !== 'coach' ? start : 'today');
+if (gotPlan && run.planNew && S.get().profile.screening.done) setTimeout(() => { const p = S.get().plan; petSay(`${petCall()}，這是${planFrom(p)}幫你準備的居家動能保養計畫喔！一起做吧！`, { ms: 9000 }); }, 9000);
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
