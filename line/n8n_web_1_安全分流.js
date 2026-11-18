@@ -1,7 +1,8 @@
 // ============================================================
 // n8n「網頁聊天」工作流程｜Code 節點 ①：安全分流（放在 Webhook 節點之後）
 // 設定：Mode = Run Once for Each Item
-// APP 送來：{ sessionId, text, mood, allowed }
+// APP 送來（介面合約 v1）：{ v, sessionId, text, history:[{role,text}], context:{ mood, allowed, pet, petName, call, county, weather, plan } }
+// 也相容舊格式（欄位平鋪）。APP 介面改版時，只要合約不變，這段程式不用改。
 // 原則與 LINE 版相同：安全相關一律固定回覆，不送給 AI（APP 端也會先擋一次，這裡是第二道）
 // ============================================================
 
@@ -9,7 +10,8 @@ const CRISIS = ["想死", "不想活", "毋想活", "自殺", "活著沒意思",
 const BODY = ["胸痛", "胸悶", "胸口", "喘不過氣", "呼吸困難", "心悸", "心跳很快", "冒冷汗", "半邊", "手腳無力", "講話不清", "嘴歪", "昏倒", "暈倒", "頭暈", "很暈", "跌倒了", "摔倒了", "跌了一跤", "摔了一跤"];
 const has = (t, keys) => keys.some(k => t.includes(k));
 
-const b = $json.body || {};
+const body = $json.body || {};
+const b = { ...body, ...(body.context || {}) };
 const text = String(b.text || '').trim().slice(0, 300);
 const sessionId = String(b.sessionId || 'web-unknown').slice(0, 60);
 
@@ -19,5 +21,10 @@ if (has(text, BODY)) return { json: { route: 'fixed', flag: 'body', reply: "請�
 
 // 把今天的狀態當成背景資訊交給 AI（不含姓名等個人資料）
 const allowedText = { none: '今天不適合運動', seated: '今天只做坐姿活動', standard: '今天可做坐姿與扶椅活動' }[b.allowed] || '今天還沒做活動前確認';
-const context = `（背景資訊，不要直接念出來：今天心情：${b.mood || '未選'}；${allowedText}）`;
-return { json: { route: 'ai', sessionId, chatInput: `${context}\n${text}` } };
+const petText = b.pet ? `你扮演的夥伴＝${b.petName || ''}（${b.pet}），稱呼使用者為「${b.call || '你'}」；` : '';
+const extra = [b.weather && `天氣：${b.weather}`, b.plan && `正在進行：${b.plan}`].filter(Boolean).join('；');
+const context = `（背景資訊，不要直接念出來：${petText}今天心情：${b.mood || '未選'}；${allowedText}${extra ? '；' + extra : ''}）`;
+// 最近幾句對話由 APP 一起送來：n8n 不需要另外設定記憶，也不在伺服器保存聊天內容
+const hist = (Array.isArray(body.history) ? body.history : []).slice(-8)
+  .map(h => `${h.role === 'user' ? '使用者' : '你'}：${String(h.text || '').slice(0, 200)}`).join('\n');
+return { json: { route: 'ai', sessionId, chatInput: `${context}${hist ? `\n（最近的對話）\n${hist}` : ''}\n使用者現在說：${text}` } };

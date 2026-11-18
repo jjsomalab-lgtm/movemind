@@ -14,6 +14,7 @@ import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voic
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
+import { registerJourney, homeCard as journeyHomeCard } from './journey.js';
 
 const $ = sel => document.querySelector(sel);
 const main = () => $('#main');
@@ -106,13 +107,14 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v12.2（2026-11-11）';
+export const APP_VERSION = 'v12.5（2026-11-18）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
   today: 'home', lake: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
   forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', checkSummary: 'forest', companion: 'forest', afterMood: 'forest', walk: 'forest', walking: 'forest', stopToday: 'forest',
   knowledge: 'knowledge', card: 'knowledge',
+  journey: 'oasis', journeyRoll: 'oasis', journeyCard: 'oasis', journeyReward: 'oasis', journeyBook: 'oasis', journeyShop: 'oasis',
   oasis: 'oasis', garden: 'oasis', week: 'oasis', reward: 'oasis', postcard: 'oasis', settings: 'oasis',
 };
 
@@ -173,7 +175,7 @@ export function go(name, ...args) {
   cleanup(name);
   currentScreen = screens[name] ? name : 'today';
   (screens[name] || screens.today)(...args);
-  if (['today', 'lake', 'forest', 'knowledge', 'oasis', 'activities', 'walk', 'garden', 'week'].includes(name)) history.replaceState(null, '', '#' + name);
+  if (['today', 'lake', 'forest', 'knowledge', 'oasis', 'activities', 'walk', 'garden', 'week', 'journey'].includes(name)) history.replaceState(null, '', '#' + name);
 }
 
 function cleanup() {
@@ -383,6 +385,7 @@ screens.today = () => {
       ${s.demo ? `<p class="tour-flag"><span>示範旅程</span><button data-act="endDemo">結束示範</button></p>` : ''}${hero}
       <button class="btn huge" data-go="mood">說說今天的心情</button>
       <button class="btn huge primary" ${task.attr}>${task.btn}</button>
+      <button class="btn huge soft" data-go="journey">迺台灣（擲骰遊台灣）</button>
       ${lineLink(lineOpener(), '跟小夥伴聊聊（LINE）', 'btn huge line-btn')}
       <button class="text-link" data-go="settings">設定（可關閉簡易模式）</button>
     `, { tab: 'today' });
@@ -408,6 +411,7 @@ screens.today = () => {
       <button class="btn primary big" ${task.attr}>${esc(task.btn)}</button>
     </section>
     ${planCard()}
+    ${journeyHomeCard(petName())}
     ${rescreenDue() ? '<button class="btn soft" data-act="redoScreening">已經 3 個月了，請重新回答健康小問題</button>' : ''}
     ${fofDue() ? '<button class="btn soft" data-go="fof">每週小問題：走路時擔心跌倒嗎？</button>' : ''}
     <div class="home-grid">
@@ -716,10 +720,11 @@ screens.reward = () => {
       <p>${esc(r.detail)} ${esc(grownText)}</p>
     </div>
     ${r.walk ? '<button class="btn line-btn" data-act="postcard">做一張散步明信片分享</button>' : ''}
-    ${canPlant() ? '<button class="btn primary" data-go="garden">去種新的植物</button>' : ''}
+    <button class="btn primary big jr-gotdie" data-go="journey">得到 1 顆骰子！去迺台灣</button>
+    ${canPlant() ? '<button class="btn soft" data-go="garden">去種新的植物</button>' : ''}
     <button class="btn" data-go="today">回首頁</button>
   `);
-  speak(`${mr || ''}${r.title}${r.detail}${grownText}`);
+  speak(`${mr || ''}${r.title}${r.detail}${grownText}還得到 1 顆骰子，可以去迺台灣喔！`);
   petals();
 };
 
@@ -1046,10 +1051,10 @@ screens.chat = () => {
     </div>` : '';
   page(`跟${petName()}聊聊`, `
     ${ai ? '' : lineCard}
-    <p class="demo-flag">${ai ? '小夥伴由 AI 回答，和 LINE 官方帳號是同一個小夥伴' : '展示模式：回應為預先設計'}</p>
+    <p class="demo-flag">${ai ? `${esc(petName())}由 AI 回答，和 LINE 官方帳號是同一個大腦` : '離線示範：回應為預先設計；接上 AI 後會像 LINE 一樣自然對話'}</p>
     <div class="chat" id="chatLog">
-      <div class="bubble bot">${esc(greeting())} 想聊什麼都可以，我在這裡。</div>
-      ${msgs.map(m => `<div class="bubble ${m.who}">${esc(m.text)}</div>`).join('')}
+      ${botRow(`${greeting()} 想聊什麼都可以，我在這裡。`)}
+      ${msgs.map(m => m.who === 'me' ? `<div class="bubble me">${esc(m.text)}</div>` : botRow(m.text)).join('')}
     </div>
     <div class="chips">${C.CHAT_CHIPS.map(c => `<button class="chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <form class="chat-input" data-form="chat">
@@ -1062,6 +1067,11 @@ screens.chat = () => {
   `, { back: 'today' });
   const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
 };
+
+function botRow(text, extra = '') {
+  const t = S.get().profile.petType;
+  return `<div class="bot-row ${extra}">${t ? `<span class="bot-av">${petSVG(t, 40)}</span>` : ''}<div class="bubble bot">${text === null ? '<span class="dots"><i></i><i></i><i></i></span>' : esc(text)}</div></div>`;
+}
 
 // 帶到 LINE 的第一句話：有今天的心情就一起帶過去，讓小夥伴接得上話
 function lineOpener() {
@@ -1107,6 +1117,20 @@ async function intentReply(text) {
   return null;
 }
 
+// ---------- 與 n8n 的「介面合約」v1 ----------
+// 只要這個格式不變，APP 介面怎麼改都不影響 n8n。新增欄位一律放進 context，n8n 會忽略看不懂的欄位。
+function chatPayload(text, mood) {
+  const s = S.get();
+  const history = (s.chat || []).slice(-9, -1).map(m => ({ role: m.who === 'me' ? 'user' : 'pet', text: String(m.text).slice(0, 200) }));
+  const context = {
+    mood: mood ? mood.label : '', allowed: s.today.allowed || '',
+    pet: s.profile.petType || '', petName: petName(), call: petCall(),
+    county: s.profile.county || '', weather: run.weatherAdvice ? run.weatherAdvice.text : '',
+    plan: s.plan ? `${planFrom(s.plan)}的居家保養計畫` : '',
+  };
+  return { v: 1, sessionId: S.chatSession(), text: text.slice(0, 300), history, context, ...context }; // 後面平鋪的欄位是相容舊版 n8n
+}
+
 let chatBusy = false;
 async function sendChat(text) {
   text = text.trim(); if (!text || chatBusy) return;
@@ -1139,7 +1163,7 @@ async function sendChat(text) {
   pushChat('me', text);
   screens.chat();
   const log = $('#chatLog');
-  log.insertAdjacentHTML('beforeend', '<div class="bubble bot typing" id="typing">小夥伴正在想…</div>');
+  log.insertAdjacentHTML('beforeend', botRow(null, 'typing'));
   log.scrollTop = log.scrollHeight;
   chatBusy = true;
   let reply = '', flag = null;
@@ -1149,7 +1173,7 @@ async function sendChat(text) {
     const mood = s.today.mood && C.MOODS.find(m => m.id === s.today.mood);
     const res = await fetch(C.AI_CHAT_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
-      body: JSON.stringify({ sessionId: S.chatSession(), text: text.slice(0, 300), mood: mood ? mood.label : '', allowed: s.today.allowed || '', pet: s.profile.petType || '', petName: petName(), call: petCall() }),
+      body: JSON.stringify(chatPayload(text, mood)),
     });
     clearTimeout(t);
     const data = await res.json();
@@ -1390,7 +1414,7 @@ function planCard() {
 }
 
 screens.coach = () => {
-  const cp = S.get().coachProfile || { store: '', coach: '' }, sel = run.coachSel || [];
+  const cp = { ...(S.get().coachProfile || { store: '', coach: '' }), ...(run.coachDraft || {}) }, sel = run.coachSel || [];
   const groups = {};
   C.ACTIVITIES.forEach(a => { const g = C.BODY_OF[a.id] || '其他'; (groups[g] = groups[g] || []).push(a); });
   const out = run.coachOut;
@@ -1405,7 +1429,7 @@ screens.coach = () => {
     <section class="card">
       <h3 class="card-title">挑選動作（已選 ${sel.length}／5）</h3>
       ${Object.entries(groups).map(([g, list]) => `<p class="coach-group">${g}</p><div class="coach-list">${list.map(a => `<button class="coach-pick ${sel.includes(a.id) ? 'on' : ''}" data-coachpick="${a.id}"><b>${sel.includes(a.id) ? '✓ ' : ''}${esc(a.name)}</b><small>${a.level === 'seated' ? '坐姿' : '扶椅站姿'}・${esc(a.repsNote || '')}</small></button>`).join('')}</div>`).join('')}
-      <label class="field">給顧客的一句話（選填）<input id="cpNote" type="text" maxlength="60" placeholder="例如：每天睡前做一次，慢慢來就好"></label>
+      <label class="field">給顧客的一句話（選填）<input id="cpNote" type="text" maxlength="60" value="${esc(cp.note || '')}" placeholder="例如：每天睡前做一次，慢慢來就好"></label>
       <label class="field">完成 3 次居家保養的到店優惠（選填）<input id="cpOffer" type="text" maxlength="30" value="${esc(cp.offer || '')}" placeholder="例如：下次調理折 100 元"></label>
       <label class="field">店家原本的預約連結（選填）<input id="cpBook" type="url" maxlength="300" value="${esc(cp.book || '')}" placeholder="FreeTime、inline、LINE 官方帳號或預約表單網址"></label>
       <p class="note">沒有預約連結也沒關係：顧客會看到心動力的「示範預約」畫面。</p>
@@ -2047,6 +2071,7 @@ document.addEventListener('click', e => {
   if (d.bk) { const [k, v] = d.bk.split(':'); run.bk[k] = k === 'day' ? Number(v) : v; run.hold = null; return screens.book(); }
   if (d.slot) { const [start, staff] = d.slot.split('|'); run.hold = { start, staff, until: Date.now() + 10 * 60000 }; screens.book(); setTimeout(() => document.querySelector('.hold-card')?.scrollIntoView({ behavior: 'smooth' }), 50); return; }
   if (d.coachpick) {
+    run.coachDraft = { store: $('#cpStore')?.value || '', coach: $('#cpCoach')?.value || '', note: $('#cpNote')?.value || '', offer: $('#cpOffer')?.value || '', book: $('#cpBook')?.value || '' };
     const sel = run.coachSel = run.coachSel || [];
     const i = sel.indexOf(d.coachpick);
     if (i >= 0) sel.splice(i, 1); else if (sel.length < 5) sel.push(d.coachpick); else { alert('最多挑選 5 個動作。'); return; }
@@ -2293,6 +2318,9 @@ setInterval(() => {
   const body = main().querySelector('.body'); const html = reminderPop();
   if (body && html) body.insertAdjacentHTML('afterbegin', html);
 }, 60000);
+
+// ---------- 迺台灣（js/journey.js） ----------
+registerJourney({ screens, page, go, speak, sayBtn, petals, petSVG, petName, lineURL });
 
 // ---------- 啟動 ----------
 setFont();

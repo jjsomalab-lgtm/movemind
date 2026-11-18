@@ -708,3 +708,72 @@ html[data-scale="large"] .coach-list { grid-template-columns: 1fr; }
 .contact-row.new { background: #E7F0E7; border-radius: 10px; padding: .3rem .5rem; }
 .tour-link.inline { min-height: 0; padding: 0 .3rem; font-size: .8rem; }
 html[data-scale="large"] .slot-grid { grid-template-columns: repeat(2, 1fr); } html[data-scale="large"] .day-row { grid-template-columns: repeat(4, 1fr); }
+
+/* v12.4：聊天更像 LINE */
+.bot-row { display: flex; align-items: flex-end; gap: .4rem; }
+.bot-av { flex: none; width: 42px; height: 42px; border-radius: 50%; background: #FBF3E2; display: grid; place-items: center; overflow: hidden; }
+.bot-row .bubble.bot { margin: 0; }
+.dots { display: inline-flex; gap: 5px; padding: .2rem 0; } .dots i { width: 8px; height: 8px; border-radius: 50%; background: #9AA8A1; animation: dot 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: .2s; } .dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+/* ---------- 迺台灣（v12.5）：動起來得骰子，擲骰遊台灣 ---------- */
+.jr-home { display: flex; align-items: center; gap: .9rem; width: 100%; min-height: 84px; padding: .9rem 1.1rem; border: 2px solid #E9C38E; border-radius: var(--radius); background: linear-gradient(120deg, #FFF6E6, #EAF5EC); color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow); }
+.jr-home b { display: block; font-size: 1.15rem; color: var(--forest); }
+.jr-home span span { display: block; font-size: .95rem; color: var(--muted); }
+.jr-home-die { line-height: 0; flex: none; }
+.jr-head { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+.jr-title { font-family: 'Noto Serif TC', 'Noto Serif CJK TC', 'Songti TC', serif; font-size: 1.35rem; margin: 0; color: #3A3833; letter-spacing: .04em; }
+.jr-badges { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.jr-badge { display: inline-flex; align-items: center; gap: .3rem; background: #F6EFDF; border: 1.5px solid #3A3833; border-radius: 999px; padding: .2rem .8rem; font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
+.jr-badge.gold { background: #FBE6C2; color: #7A4A12; }
+.jr-map-wrap { background: #F6EFDF; border-radius: var(--radius); border: 2px solid #3A3833; padding: .45rem; box-shadow: 4px 4px 0 #8DB596; }
+.jr-map { display: block; width: 100%; max-height: 56vh; }
+.jr-map-wrap.small .jr-map { max-height: 34vh; }
+.jr-pet { width: 52px; height: 52px; animation: jrHop 1.6s ease-in-out infinite; }
+.jr-pet svg { width: 52px; height: 52px; }
+@keyframes jrHop { 50% { transform: translateY(-5px); } }
+.jr-here { text-align: center; font-size: 1rem; }
+.jr-dice { display: grid; place-items: center; padding: .4rem 0; }
+.jr-die { display: inline-block; line-height: 0; animation: jrRoll .9s ease-out 1; }
+@keyframes jrRoll { 0% { transform: rotate(-200deg) scale(.4); opacity: 0; } 70% { transform: rotate(15deg) scale(1.1); opacity: 1; } 100% { transform: none; } }
+.jr-choices { display: grid; gap: .7rem; }
+.jr-choice { min-height: 72px; font-size: 1.2rem; background: var(--surface); border-color: var(--line); color: var(--ink); }
+.jr-how { font-size: 1.1rem; margin-top: .5rem; line-height: 1.6; }
+.jr-memory { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.jr-mcard { min-height: 88px; border-radius: 16px; border: 3px solid #9CC3B5; background: #2E7A62; color: #fff; font: inherit; font-size: 1.6rem; font-weight: 900; cursor: pointer; }
+.jr-mcard.open { background: #FFF7E6; color: var(--ink); border-color: #E9C38E; font-size: 1.15rem; }
+.jr-mcard.got { background: #E3F2E6; border-color: #5E9C78; color: var(--forest); }
+.jr-reward { position: relative; text-align: center; background: #FBF7EC; border-radius: var(--radius); border: 2px solid #3A3833; box-shadow: 4px 4px 0 #DDA43E; padding: 1.2rem 1rem; display: flex; flex-direction: column; gap: .6rem; }
+.jr-reward .say { position: absolute; top: .6rem; right: .6rem; }
+.jr-reward-icon { display: grid; place-items: center; line-height: 0; animation: jrStamp .5s ease-out 1; }
+@keyframes jrStamp { 0% { transform: scale(1.6); opacity: 0; } 70% { transform: scale(.94); opacity: 1; } 100% { transform: none; } }
+.jr-tip { background: var(--sage); border-radius: 14px; padding: .7rem .9rem; text-align: left; font-size: 1rem; }
+.jr-pts { font-size: 1.5rem; font-weight: 900; color: var(--amber-ink); }
+.jr-item { font-size: 1.05rem; }
+.jr-book { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.jr-book-item { border-radius: 16px; padding: .6rem .3rem; display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; color: var(--muted); background: #FBF7EC; }
+.jr-book-item b { font-size: 1.05rem; }
+.jr-book-item span { font-size: .85rem; }
+.jr-book-item.got { color: var(--ink); }
+.jr-book-item .jr-stamp { width: 100%; max-width: 128px; height: auto; }
+.jr-shop { display: grid; gap: .6rem; }
+.jr-shop-item { display: flex; justify-content: space-between; align-items: center; gap: .6rem; background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: .8rem 1rem; }
+.jr-shop-item b { display: block; }
+.jr-shop-item span { font-size: .85rem; color: var(--muted); }
+.jr-shop-item .jr-cost { font-size: 1.05rem; font-weight: 900; color: var(--amber-ink); white-space: nowrap; }
+/* 文創插畫：明信片、紀念章 */
+.jr-postcard { position: relative; display: flex; gap: .8rem; align-items: center; background: #F6EFDF; border: 2px solid #3A3833; border-radius: 14px; padding: .8rem 3.9rem .8rem .7rem; box-shadow: 4px 4px 0 #8DB596; }
+.jr-pc-art { flex: none; background: #FFF8EA; border: 2px dashed #C45A3B; border-radius: 8px; padding: .3rem; line-height: 0; }
+.jr-pc-text { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.jr-pc-text b { font-family: 'Noto Serif TC', 'Noto Serif CJK TC', 'Songti TC', serif; font-size: 1.2rem; color: #3A3833; letter-spacing: .03em; }
+.jr-pc-label { font-size: .85rem; font-weight: 800; color: #C45A3B; letter-spacing: .12em; }
+.jr-pc-story { font-size: .95rem; color: #4E4A40; line-height: 1.5; }
+.jr-pc-mark { position: absolute; top: .6rem; right: .6rem; width: 3.1rem; height: 3.1rem; border: 2px solid #C45A3B; border-radius: 50%; color: #C45A3B; font-size: .8rem; font-weight: 800; line-height: 1.15; display: grid; place-items: center; text-align: center; transform: rotate(12deg); opacity: .85; }
+.jr-stamp { display: block; }
+.jr-head .eyebrow { color: #C45A3B; }
+.jr-mcard { background: #2F7E77; border-color: #3A3833; box-shadow: 3px 3px 0 #8DB596; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', 'Songti TC', serif; }
+.jr-mcard.open { background: #FFF8EA; border-color: #3A3833; }
+.jr-mcard.got { background: #F3EAD3; border-color: #C45A3B; color: #C45A3B; }
+.jr-choice { border: 2px solid #3A3833; background: #FFF8EA; box-shadow: 3px 3px 0 #8DB596; }
+@media (prefers-reduced-motion: reduce) { .jr-pet, .jr-die, .jr-reward-icon { animation: none; } }

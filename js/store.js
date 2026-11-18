@@ -33,6 +33,7 @@ const blank = () => ({
   breaths: [],             // 呼吸練習 { at, minutes }
   reads: [],               // 讀過的知識卡 id
   garden: { seeds: 1, water: 0, plots: [{ type: 'jasmine', stage: 0 }], unlocked: ['jasmine', 'osmanthus', 'magnolia', 'bougainvillea'], checkins: [], communityKm: 3.2, spirits: [] },
+  journey: null,           // 迺台灣：{ pos, used, visited[], items[], pts, turns, history[], card, roll, last }
   chat: [],
   chatSession: '',         // 網頁聊天的對話代碼（讓 AI 記得前幾句），不含個人資料
   demo: false,
@@ -190,9 +191,9 @@ export function markRead(id) {
   if (!state.reads.includes(id)) { state.reads.push(id); save(); }
 }
 
-// 參與點數：只會增加。活動 2 點、其他各 1 點
+// 參與點數：只會增加。活動 2 點、其他各 1 點；迺台灣的動腦小卡另加點數
 export function points() {
-  return state.sessions.length * 2 + state.moods.length + state.breaths.length + (state.garden.spirits || []).length + state.reads.length;
+  return state.sessions.length * 2 + state.moods.length + state.breaths.length + (state.garden.spirits || []).length + state.reads.length + ((state.journey && state.journey.pts) || 0);
 }
 
 export function earnedBadges() {
