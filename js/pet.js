@@ -49,84 +49,97 @@ export function petLine(screen, call, seed = 0) {
   return list[seed % list.length].replaceAll('{call}', call || '你');
 }
 
-// ---------- 原創造型：台灣懷舊手繪風（水彩平塗、鉛筆細線、局部網點、套色微偏移） ----------
-// 阿福＝台灣黑土狗（四眼眉斑、立耳、鐮刀尾、紅項圈）；柑仔＝橘白米克斯貓；慢慢＝台灣斑龜
-// 濾鏡與網點定義在 art.js 的 paperDefs()（全站只放一次，不重複建立濾鏡）
+// ---------- 原創造型：文青繪本風（圓潤線條、柔和平塗、腮紅、小配件） ----------
+// 阿福＝台灣黑土狗（四眼眉斑、圓眼鏡、卡其格紋圍巾、捧著熱茶、身邊一本書）
+// 柑仔＝橘白米克斯貓（磚紅格紋圍巾）；慢慢＝台灣斑龜（暖黃毛線帽）
+// 全部原創；不用粗黑漫畫框，線條是暖褐墨色、圓角收尾
 export function petSVG(type, size = 96, { mood = 'happy' } = {}) {
-  // 鉛筆線：細、帶輕微抖動（mmWobble），顏色依角色變化，不用粗黑描邊
-  const line = (c, w = 1.4) => `fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 1.6 6 1.2" opacity=".9"`;
-  // 水彩色塊：主色＋偏移的淡色暈染
-  const wash = (d, c, c2, light = false) => `<path d="${d}" fill="${c2}" opacity=".5" transform="translate(.9 .7)"/><path d="${d}" fill="${c}"/><path d="${d}" fill="url(#${light ? 'mmHatchLight' : 'mmHatch'})"/>`;
-  const eye = (cx, cy, iris, slit, lineC) => mood === 'calm'
-    ? `<path d="M${cx - 4.5} ${cy} q4.5 -3.5 9 0" ${line(lineC, 1.8)}/>`
-    : `<g class="pt-eye"><ellipse cx="${cx}" cy="${cy}" rx="3.6" ry="${slit ? 3.6 : 3.2}" fill="${iris}"/>${slit ? `<ellipse cx="${cx}" cy="${cy}" rx=".9" ry="3" fill="#2A2622"/>` : `<circle cx="${cx}" cy="${cy}" r="1.9" fill="#1E1C1A"/>`}<circle cx="${cx + .9}" cy="${cy - 1.1}" r=".9" fill="#FFF8EC"/></g>`;
+  const L = '#2E241E';
+  const ln = (w = 1.8, c = L) => `fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+  const fl = (c, w = 1.8) => `fill="${c}" stroke="${L}" stroke-width="${w}" stroke-linejoin="round"`;
+  const calm = mood === 'calm';
+  const eyes = (lx, rx, y, r = 3.6, lidC = L) => calm
+    ? `<path d="M${lx - 3.5} ${y} q3.5 3 7 0 M${rx - 3.5} ${y} q3.5 3 7 0" ${ln(1.9, lidC)}/>`
+    : `<g class="pt-eye"><circle cx="${lx}" cy="${y}" r="${r}" fill="#1B1512"/><circle cx="${rx}" cy="${y}" r="${r}" fill="#1B1512"/><circle cx="${lx + 1.2}" cy="${y - 1.3}" r="${r * .38}" fill="#fff"/><circle cx="${rx + 1.2}" cy="${y - 1.3}" r="${r * .38}" fill="#fff"/><circle cx="${lx - 1.2}" cy="${y + 1.4}" r="${r * .16}" fill="#fff" opacity=".8"/><circle cx="${rx - 1.2}" cy="${y + 1.4}" r="${r * .16}" fill="#fff" opacity=".8"/></g>`;
+  const blush = (lx, rx, y) => `<ellipse cx="${lx}" cy="${y}" rx="4.6" ry="2.8" fill="#EE8E7C" opacity=".6"/><ellipse cx="${rx}" cy="${y}" rx="4.6" ry="2.8" fill="#EE8E7C" opacity=".6"/>`;
+  // 格紋圍巾：底色＋兩組細格線，右邊垂下一截有流蘇
+  const scarf = (base, c1, c2, y = 62) => `
+    <path d="M60 ${y + 3} L67 ${y + 22} L59 ${y + 24} L54 ${y + 6}Z" ${fl(base, 1.6)}/>
+    <path d="M58 ${y + 9} L63.5 ${y + 8} M60 ${y + 15} L65.5 ${y + 14} M61 ${y + 6} L65 ${y + 21}" ${ln(1.2, c1)}/>
+    <path d="M59.5 ${y + 24.5} l-.6 2.6 M62 ${y + 24} l-.3 2.6 M64.5 ${y + 23.3} l0 2.6 M66.8 ${y + 22.6} l.4 2.4" ${ln(1.1, base)}/>
+    <path d="M29 ${y - 2} Q50 ${y + 9} 71 ${y - 2} L72 ${y + 6} Q50 ${y + 17} 28 ${y + 6}Z" ${fl(base, 1.6)}/>
+    <path d="M30 ${y + 2} Q50 ${y + 12} 71 ${y + 2}" ${ln(1.3, c1)}/><path d="M38 ${y + 1} l-1 7 M46 ${y + 3} l-.5 8 M54 ${y + 3} l.5 8 M62 ${y + 1} l1 7" ${ln(1.1, c1)}/>
+    <path d="M42 ${y + 2} l-.6 7 M58 ${y + 2} l.6 7" ${ln(.8, c2)}/>`;
   let art = '';
   if (type === 'dog') {
-    const K = '#393733', K2 = '#5B5852', L = '#1D1C1A', MIST = '#91A9AF';
-    art = `<ellipse cx="50" cy="97" rx="24" ry="3" fill="#414641" opacity=".14"/>
-      <g class="pt-tail" style="transform-origin:68px 80px">${wash('M67 84 c14 -2 20 -12 17 -26 c-1 -4 -6 -4 -6 0 c1 10 -4 17 -12 20z', K, K2, true)}<path d="M67 84 c14 -2 20 -12 17 -26" ${line(L)}/></g>
-      ${wash('M32 96 c-2 -14 3 -27 18 -29 c15 2 20 15 18 29z', K, K2, true)}
-      <path d="M32 96 c-2 -14 3 -27 18 -29 c15 2 20 15 18 29" ${line(L)}/>
-      <path d="M34 92 c2 -10 5 -16 9 -19" fill="url(#mmDotsLight)" stroke="none"/>
-      <path d="M61 74 c4 5 5 12 4 19" ${line(MIST, 1.3)} opacity=".8"/>
-      <path d="M41 96 c0 -7 1 -11 2 -14 M59 96 c0 -7 -1 -11 -2 -14" ${line(L, 1.3)} opacity=".7"/>
-      <path d="M35 69 c10 5 20 5 30 0 l-3 4 c-3 3 -7 9 -12 12 c-5 -3 -9 -9 -12 -12z" fill="#BC725F"/><path d="M35 69 c10 5 20 5 30 0 l-3 4 c-3 3 -7 9 -12 12 c-5 -3 -9 -9 -12 -12z" fill="url(#mmHatch)"/><g fill="#F5E6CC" opacity=".85"><circle cx="44" cy="74" r="1.2"/><circle cx="50" cy="76" r="1.4"/><circle cx="56" cy="74" r="1.2"/><circle cx="50" cy="80" r="1"/></g><path d="M35 69 c10 5 20 5 30 0" fill="none" stroke="#8E4E3E" stroke-width="1.1" opacity=".8"/>
-      <g transform="translate(0 6)"><g class="pt-head" style="transform-origin:50px 62px">
-        ${wash('M28 34 L31 10 L44 24z', K, K2, true)}${wash('M72 34 L69 10 L56 24z', K, K2, true)}
-        <path d="M28 34 L31 10 L44 24 M72 34 L69 10 L56 24" ${line(L)}/>
-        <path d="M32 28 L33 17 L39 24z M68 28 L67 17 L61 24z" fill="#5E4A44" opacity=".7"/>
-        ${wash('M50 20 c13 0 21 9 21 20 c0 8 -4 13 -9 16 c-4 3 -8 4 -12 4 s-8 -1 -12 -4 c-5 -3 -9 -8 -9 -16 c0 -11 8 -20 21 -20z', K, K2, true)}
-        <path d="M50 20 c13 0 21 9 21 20 c0 8 -4 13 -9 16 c-4 3 -8 4 -12 4 s-8 -1 -12 -4 c-5 -3 -9 -8 -9 -16 c0 -11 8 -20 21 -20z" ${line(L)}/>
-        <path d="M66 27 c3 4 4 9 3 13" ${line(MIST, 1.3)} opacity=".8"/>
-        <path d="M39 47 c7 -4 15 -4 22 0 c1 8 -4 12 -11 13 c-7 -1 -12 -5 -11 -13z" fill="#4E4A45"/>
-        <ellipse cx="41" cy="33" rx="2.8" ry="1.8" fill="#B08A5A"/><ellipse cx="59" cy="33" rx="2.8" ry="1.8" fill="#B08A5A"/>
-        ${eye(42, 39, '#A07440', false, '#D9D2C4')}${eye(58, 39, '#A07440', false, '#D9D2C4')}
-        <path d="M46.5 47 q3.5 -2 7 0 q-.6 3 -3.5 3.6 q-2.9 -.6 -3.5 -3.6z" fill="#1A1917"/>
-        <path d="M45.5 54 q2.2 2 4.5 0 q2.3 2 4.5 0" ${line('#CFC7B8', 1.4)}/>
-        <path d="M48 55.4 q2 4.6 4 0z" fill="#C98580"/><circle cx="50.8" cy="56.6" r=".7" fill="#4A2E3A"/>
-      </g></g>`;
+    const K = '#2B2724', K2 = '#3D3833', TAN = '#C98F55';
+    art = `<ellipse cx="52" cy="97" rx="30" ry="3.4" fill="#3B2E28" opacity=".14"/>
+      <!-- 一本精裝書 -->
+      <g transform="rotate(-6 82 92)"><rect x="72" y="88" width="20" height="8" rx="1.4" ${fl('#3E6B5A', 1.5)}/><rect x="73.5" y="92.6" width="17" height="2.2" fill="#F3ECDD"/><path d="M76 90.5 h8" ${ln(1, '#C9A46A')}/></g>
+      <g class="pt-tail" style="transform-origin:66px 86px"><path d="M64 88 C78 88 84 76 80 64 C79 61 75 62 76 65 C78 74 74 81 63 82Z" ${fl(K)}/></g>
+      <path d="M30 96 C27 78 36 65 50 65 C64 65 73 78 70 96Z" ${fl(K)}/>
+      <path d="M41 80 C44 74 56 74 59 80 C60 88 56 94 50 94 C44 94 40 88 41 80Z" fill="${K2}"/>
+      <ellipse cx="39" cy="95" rx="7.5" ry="4.2" ${fl(K, 1.6)}/><ellipse cx="61" cy="95" rx="7.5" ry="4.2" ${fl(K, 1.6)}/>
+      <path d="M36 94.5 v2 M39 94 v2.4 M58 94 v2.4 M61 94.5 v2" ${ln(1, '#5A524B')}/>
+      ${scarf('#CFAE74', '#3F6B4E', '#B8553D')}
+      <!-- 捧著冒熱氣的馬克杯 -->
+      <g class="pt-steam" opacity=".7"><path d="M46 72 q-2 -3 0 -5 q2 -3 0 -5 M53 72 q-2 -3 0 -5 q2 -3 0 -5" ${ln(1.3, '#B8ADA0')}/></g>
+      <path d="M57 78 q6 0 6 4.5 q0 4.5 -6 4.5" ${ln(2, L)}/><path d="M57 78.4 q5.2 0 5.2 4.1 q0 4.1 -5.2 4.1" ${ln(1, '#F3ECDD')}/>
+      <rect x="42.5" y="74.5" width="15" height="14" rx="2.6" ${fl('#F3ECDD', 1.6)}/><path d="M42.8 81 h14.4" ${ln(2.4, '#C8432B')}/>
+      <ellipse cx="41" cy="83" rx="4.6" ry="3.8" ${fl(K, 1.5)}/><ellipse cx="59" cy="83.5" rx="4.6" ry="3.8" ${fl(K, 1.5)}/>
+      <g class="pt-head" style="transform-origin:50px 62px">
+        <path d="M29 38 C25 26 27 14 31 11 C35 12 42 20 45 26Z" ${fl(K)}/><path d="M71 38 C75 26 73 14 69 11 C65 12 58 20 55 26Z" ${fl(K)}/>
+        <path d="M32 31 C31 24 31.5 18 33 16 C36 19 39 23 40 26Z M68 31 C69 24 68.5 18 67 16 C64 19 61 23 60 26Z" fill="#6B4E48"/>
+        <ellipse cx="50" cy="42" rx="24.5" ry="21" ${fl(K)}/>
+        <ellipse cx="50" cy="52.5" rx="11" ry="7.6" fill="${K2}"/>
+        <ellipse cx="40.5" cy="32.5" rx="3.4" ry="2.2" fill="${TAN}"/><ellipse cx="59.5" cy="32.5" rx="3.4" ry="2.2" fill="${TAN}"/>
+        ${eyes(41, 59, 41.5, 3.6, '#E9DFD0')}
+        <g class="pt-glasses"><circle cx="41" cy="41.5" r="7.4" fill="#FFFFFF" fill-opacity=".12" stroke="#FBF6EA" stroke-width="2.1"/><circle cx="59" cy="41.5" r="7.4" fill="#FFFFFF" fill-opacity=".12" stroke="#FBF6EA" stroke-width="2.1"/><path d="M48.4 40.6 q1.6 -1.6 3.2 0 M33.6 40 l-7 -2 M66.4 40 l7 -2" ${ln(2, '#FBF6EA')}/><path d="M36.6 37.8 l2.6 -2 M54.6 37.8 l2.6 -2" ${ln(1.2, '#fff')} opacity=".85"/></g>
+        ${blush(31.5, 68.5, 50)}
+        <path d="M46.6 49.4 q3.4 -1.8 6.8 0 q-.5 3 -3.4 3.6 q-2.9 -.6 -3.4 -3.6z" fill="#120E0C"/><ellipse cx="48.6" cy="49.9" rx="1.1" ry=".6" fill="#fff" opacity=".6"/>
+        <path d="M46 55 q2 2 4 0 q2 2 4 0" ${ln(1.4, '#9C8E80')}/>
+        ${calm ? '' : '<path d="M48.3 56.2 q1.7 3.6 3.4 0z" fill="#E98A86"/>'}
+      </g>`;
   } else if (type === 'cat') {
-    const O = '#CF8A52', O2 = '#E5B07E', W = '#F5EEDF', W2 = '#E6DCC6', L = '#6B4632', OD = '#A8673A';
-    art = `<ellipse cx="50" cy="97" rx="22" ry="3" fill="#414641" opacity=".14"/>
-      <g class="pt-tail" style="transform-origin:68px 88px">${wash('M67 90 c17 1 22 -10 18 -26 c-1 -4 -5 -3 -5 0 c2 13 -3 20 -13 21z', O, O2)}<path d="M67 90 c17 1 22 -10 18 -26" ${line(L)}/><path d="M80 70 l4 1 M81 78 l4 -1" ${line(OD, 1.6)}/></g>
-      ${wash('M34 96 c-2 -14 3 -25 16 -27 c13 2 18 13 16 27z', O, O2)}
-      ${wash('M42 96 c-1 -10 2 -16 8 -19 c6 3 9 9 8 19z', W, W2)}
-      <path d="M34 96 c-2 -14 3 -25 16 -27 c13 2 18 13 16 27" ${line(L)}/>
-      <path d="M60 74 c4 4 5 10 4 16" fill="none" stroke="url(#mmDots)" stroke-width="5"/>
-      <ellipse cx="41" cy="95.5" rx="5" ry="2.8" fill="${W}"/><ellipse cx="59" cy="95.5" rx="5" ry="2.8" fill="${W}"/>
-      <path d="M36 95.5 c1 -2 9 -2 10 0 M54 95.5 c1 -2 9 -2 10 0" ${line(L, 1.3)}/>
-      <g transform="translate(0 7)"><g class="pt-head" style="transform-origin:50px 64px">
-        ${wash('M29 33 L28 11 L43 23z', O, O2)}${wash('M71 33 L72 11 L57 23z', O, O2)}
-        <path d="M29 33 L28 11 L43 23 M71 33 L72 11 L57 23" ${line(L)}/>
-        <path d="M32 27 L31.5 17 L38 23z M68 27 L68.5 17 L62 23z" fill="#D9A79A" opacity=".8"/>
-        ${wash('M50 21 c14 0 22 8 22 19 c0 11 -10 18 -22 18 s-22 -7 -22 -18 c0 -11 8 -19 22 -19z', O, O2)}
-        ${wash('M50 36 c-4 0 -7 4 -9 7 c-4 1 -8 2 -9 5 c3 6 10 10 18 10 s15 -4 18 -10 c-1 -3 -5 -4 -9 -5 c-2 -3 -5 -7 -9 -7z', W, W2)}
-        <path d="M50 21 c14 0 22 8 22 19 c0 11 -10 18 -22 18 s-22 -7 -22 -18 c0 -11 8 -19 22 -19z" ${line(L)}/>
-        <path d="M45 23 l1.4 5 M50 22 v6 M55 23 l-1.4 5 M30 37 l4 .6 M70 37 l-4 .6" ${line(OD, 1.8)}/>
-        <path d="M64 25 c5 4 7 9 7 14" fill="none" stroke="url(#mmDots)" stroke-width="4"/>
-        ${eye(42, 40, '#A9AE52', true, L)}${eye(58, 40, '#A9AE52', true, L)}
-        <path d="M47.6 47 h4.8 l-2.4 2.6z" fill="#C98580"/>
-        <path d="M50 49.6 q-1.8 3 -4.4 1.6 M50 49.6 q1.8 3 4.4 1.6" ${line(L, 1.4)}/>
-        <path d="M34 48 L22 46 M34 51 L22 52 M66 48 L78 46 M66 51 L78 52" ${line('#8A6A55', 1)}/>
-      </g></g>`;
+    const O = '#E8A160', OD = '#C47A3C', W = '#FBF4E8';
+    art = `<ellipse cx="50" cy="97" rx="26" ry="3.4" fill="#3B2E28" opacity=".14"/>
+      <g class="pt-tail" style="transform-origin:66px 90px"><path d="M64 92 C82 93 86 80 80 68 C78 65 74 66 75 69 C79 78 76 86 63 86Z" ${fl(O)}/><path d="M79 72 l4 -1 M80 79 l4 0" ${ln(2, OD)}/></g>
+      <path d="M31 96 C28 79 37 66 50 66 C63 66 72 79 69 96Z" ${fl(O)}/>
+      <path d="M40 96 C38 84 43 74 50 74 C57 74 62 84 60 96Z" fill="${W}"/>
+      <path d="M33 80 l5 1 M32 86 l5 .5 M67 80 l-5 1 M68 86 l-5 .5" ${ln(2, OD)}/>
+      <ellipse cx="42" cy="94.8" rx="6.6" ry="4" ${fl(W, 1.6)}/><ellipse cx="58" cy="94.8" rx="6.6" ry="4" ${fl(W, 1.6)}/>
+      ${scarf('#C8573C', '#F3E2C2', '#2F5B4E', 63)}
+      <g class="pt-head" style="transform-origin:50px 63px">
+        <path d="M28 36 C26 25 27 16 30 12 C35 14 41 20 44 25Z" ${fl(O)}/><path d="M72 36 C74 25 73 16 70 12 C65 14 59 20 56 25Z" ${fl(O)}/>
+        <path d="M31.5 29 C31 23 31.5 19 32.5 17 C35 19 38 22 39.5 25Z M68.5 29 C69 23 68.5 19 67.5 17 C65 19 62 22 60.5 25Z" fill="#F2B3A6"/>
+        <ellipse cx="50" cy="43" rx="24" ry="20.5" ${fl(O)}/>
+        <path d="M50 37 C45 37 42 42 40 46 C35 47 31 49 30 52 C34 59 42 63 50 63 C58 63 66 59 70 52 C69 49 65 47 60 46 C58 42 55 37 50 37Z" fill="${W}"/>
+        <path d="M45 24 l1.3 5 M50 23 v6 M55 24 l-1.3 5 M27.5 40 l4.5 .5 M72.5 40 l-4.5 .5" ${ln(2.2, OD)}/>
+        ${eyes(41, 59, 43, 3.8)}
+        ${blush(33, 67, 50.5)}
+        <path d="M47.5 48.4 h5 l-2.5 2.6z" fill="#E98A86" stroke="${L}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M50 51 q-1.6 2.6 -4 1.4 M50 51 q1.6 2.6 4 1.4" ${ln(1.4)}/>
+        <path d="M33 50 L23 48.5 M33 53 L23 54 M67 50 L77 48.5 M67 53 L77 54" ${ln(1, '#8A6A55')}/>
+      </g>`;
   } else {
-    const G = '#7C9466', G2 = '#9DB384', SK = '#A9B88C', L = '#3F4F3A', Y = '#C9A46A';
-    art = `<ellipse cx="50" cy="96" rx="30" ry="3" fill="#414641" opacity=".14"/>
-      ${wash('M16 90 c0 -4 4 -7 9 -6 c4 1 5 5 3 8z', SK, G2)}${wash('M84 90 c0 -4 -4 -7 -9 -6 c-4 1 -5 5 -3 8z', SK, G2)}
-      ${wash('M14 86 C22 56 78 56 86 86 C70 93 30 93 14 86Z', G, G2)}
-      <path d="M14 86 C22 56 78 56 86 86 C70 93 30 93 14 86Z" fill="url(#mmDots)"/>
-      <path d="M14 86 C22 56 78 56 86 86 C70 93 30 93 14 86Z" ${line(L)}/>
-      <path d="M35 74 L42 64 L58 64 L65 74 L50 80Z M23 82 L35 74 M77 82 L65 74 M50 80 V89 M42 64 L38 58 M58 64 L62 58" ${line(L, 1.4)} opacity=".85"/>
-      <path d="M15 86 C30 92 70 92 85 86" ${line(Y, 2.2)}/>
-      <g transform="translate(0 9)"><g class="pt-head" style="transform-origin:50px 60px">
-        ${wash('M50 22 c11 0 18 8 18 17 c0 10 -8 16 -18 16 s-18 -6 -18 -16 c0 -9 7 -17 18 -17z', SK, G2)}
-        <path d="M50 22 c11 0 18 8 18 17 c0 10 -8 16 -18 16 s-18 -6 -18 -16 c0 -9 7 -17 18 -17z" ${line(L)}/>
-        <path d="M36 34 q5 -2 8 1 M56 35 q3 -3 8 -1 M38 46 q3 2 6 0 M56 46 q3 2 6 0" ${line(Y, 1.8)}/>
-        ${eye(43, 38, '#6A5230', false, L)}${eye(57, 38, '#6A5230', false, L)}
-        <path d="M45 48 q5 3.5 10 0" ${line(L, 1.6)}/>
-      </g></g>`;
+    const G = '#93A862', GD = '#6C8343', SK = '#C3C98E', Y = '#E0A93F';
+    art = `<ellipse cx="50" cy="96" rx="34" ry="3.4" fill="#3B2E28" opacity=".14"/>
+      <ellipse cx="22" cy="91" rx="7" ry="4.6" ${fl(SK, 1.6)}/><ellipse cx="78" cy="91" rx="7" ry="4.6" ${fl(SK, 1.6)}/>
+      <path d="M13 87 C18 58 82 58 87 87 C72 94 28 94 13 87Z" ${fl(G)}/>
+      <path d="M36 74 L42 64 L58 64 L64 74 L50 81Z" fill="${GD}" opacity=".55"/><path d="M36 74 L42 64 L58 64 L64 74 L50 81Z M22 83 L36 74 M78 83 L64 74 M50 81 V90 M42 64 L37 59 M58 64 L63 59" ${ln(1.4, '#4E6034')}/>
+      <path d="M14 87 C30 93 70 93 86 87" ${ln(3, Y)}/>
+      <g class="pt-head" style="transform-origin:50px 62px">
+        <ellipse cx="50" cy="44" rx="17.5" ry="15.5" ${fl(SK)}/>
+        <path d="M33 39 C33 27 41 22 50 22 C59 22 67 27 67 39 C62 35 38 35 33 39Z" ${fl(Y, 1.6)}/>
+        <path d="M37 33 v4 M42 30 v5 M47 29 v5 M53 29 v5 M58 30 v5 M63 33 v4" ${ln(1.1, '#B5802A')}/>
+        <circle cx="50" cy="20" r="4" ${fl('#C8432B', 1.5)}/>
+        ${eyes(43.5, 56.5, 45, 3.2)}
+        ${blush(38, 62, 51)}
+        <path d="M45.5 51.5 q4.5 3.2 9 0" ${ln(1.6)}/>
+      </g>
+      <path d="M50 96 q-1 -6 2 -9 M52 87 q4 -3 7 -1 q-3 3 -7 1z M51 90 q-4 -3 -7 -1 q3 3 7 1z" ${ln(1.2, '#3F6E3A')} fill="#8CB85A"/>`;
   }
-  return `<svg class="pet-svg pet-${type}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true" overflow="visible"><g filter="url(#mmWobble)">${art}</g></svg>`;
+  return `<svg class="pet-svg pet-${type}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true" overflow="visible">${art}</svg>`;
 }
 
 // ---------- 手繪插畫圖檔（色鉛筆風，團隊自製） ----------

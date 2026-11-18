@@ -926,3 +926,32 @@ h2, .hero-title, .card-title, .task-card h3, .scene-cap b, .section-title { colo
 .hero-text { background: linear-gradient(180deg, rgba(251, 246, 234, .9) 0%, rgba(251, 246, 234, .55) 45%, rgba(251, 246, 234, 0) 78%) !important; }
 .hero-text .hero-title, .hero-text .hero-sub, .hero-text .eyebrow { text-shadow: 0 0 6px #FBF6EA, 0 0 14px #FBF6EA, 0 0 2px #FBF6EA; }
 .hero-text .hero-sub { color: #3B2E28; font-weight: 500; }
+
+/* 夥伴（v14.1 文青繪本風）：熱茶冒煙、多在角落休息，少擋到字 */
+.pet-svg .pt-steam { animation: mmSteam 2.4s ease-in-out infinite; transform-box: view-box; }
+@keyframes mmSteam { 0%, 100% { opacity: .2; transform: translateY(2px); } 50% { opacity: .8; transform: translateY(-2px); } }
+@keyframes roam { 0%, 12% { left: 3vw; } 42%, 60% { left: calc(min(100vw, 1240px) - 104px); } 90%, 100% { left: 3vw; } }
+@keyframes flip { 0% { transform: scaleX(-1); } 13% { transform: scaleX(1); } 61% { transform: scaleX(-1); } }
+.roam-pet { animation-duration: 40s; filter: drop-shadow(0 0 3px rgba(251, 246, 234, .95)) drop-shadow(0 5px 5px rgba(59, 46, 40, .2)); }
+.roam-flip { animation-duration: 40s; }
+.roam-say { border: 1.5px solid rgba(59, 46, 40, .55) !important; border-radius: 18px; box-shadow: 0 8px 20px -8px rgba(122, 82, 40, .4) !important; }
+@media (prefers-reduced-motion: reduce) { .pet-svg .pt-steam { animation: none; } }
+
+/* 全站收尾（v14.1）：把舊版的冷藍色統一換成街屋暖色系 */
+.plan-card, .task-card.is-plan { background-color: var(--surface) !important; background-image: radial-gradient(80% 60% at 100% 0%, rgba(62, 138, 132, .14), transparent 60%), radial-gradient(70% 60% at 0% 100%, rgba(224, 169, 63, .14), transparent 60%) !important; border: 1.3px solid rgba(59, 46, 40, .55) !important; border-radius: 18px; }
+.plan-card h3, .task-card.is-plan h3 { color: var(--wc-ink) !important; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; }
+.task-card.is-plan .eyebrow, .plan-card .eyebrow { color: var(--wc-red) !important; }
+.plan-note { color: #6A5A4E; }
+.plan-item { background: #FFFCF4 !important; border: 1.3px solid rgba(59, 46, 40, .4) !important; }
+.plan-item span { color: var(--wc-teal) !important; }
+.plan-item.done, .shop-item.owned, .coach-pick.on, .day-chip.on, .contact-row.new { background: #E6F0E4 !important; }
+.plan-badge, .ex-tags span, .cat { background: #F6E9CF !important; color: #7E5418 !important; }
+.feel { background: #FFFCF4 !important; border: 1.5px solid rgba(59, 46, 40, .35) !important; color: var(--wc-ink) !important; }
+.feel:active, .feel.on { background: var(--wc-teal-l) !important; border-color: var(--wc-teal) !important; }
+.voice-pill { background: #FFF6E2 !important; border: 1.5px solid rgba(224, 169, 63, .8) !important; }
+.voice-pill button { color: #7E5418 !important; }
+body[data-scene="lake"] .card-title, body[data-scene="lake"] .feature-card b, .med-guide, .q-card .q { color: var(--wc-ink) !important; }
+body[data-scene="lake"] .fc-icon { background: #E3F0EA !important; }
+.med-stage { background: linear-gradient(#EAF3EE, #FBF6EA) !important; border: 1.3px solid rgba(59, 46, 40, .35); }
+#holdBtn.holding { background: var(--wc-teal) !important; border-color: var(--wc-teal) !important; }
+.jr-map-wrap, .jr-mcard, .jr-choice { box-shadow: var(--shadow) !important; }
