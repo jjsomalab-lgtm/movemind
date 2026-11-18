@@ -150,11 +150,11 @@ export const CHAT_CHIPS = ['今天有點累', '膝蓋有點緊', '一個人有�
 
 // 心動綠洲植物（原創繪製，臺灣常見植物）
 export const PLANTS = {
-  jasmine: { name: '茉莉花', petal: '#FFFFFF', edge: '#D9E2D2', center: '#F2D16B' },
-  osmanthus: { name: '桂花', petal: '#F2A93B', edge: '#D9861A', center: '#B8650C' },
-  magnolia: { name: '玉蘭花', petal: '#FBF3DC', edge: '#E3D4A6', center: '#E9C96A' },
-  bougainvillea: { name: '九重葛', petal: '#D63A86', edge: '#A8256A', center: '#F4E6A0' },
-  kapok: { name: '木棉花', petal: '#D9482B', edge: '#A83418', center: '#F2B33D', special: true },
+  jasmine: { name: '茉莉花', petal: '#FBF7EC', edge: '#C9CDBD', center: '#D9B86A' },
+  osmanthus: { name: '桂花', petal: '#D9A35A', edge: '#B98444', center: '#9A6A34' },
+  magnolia: { name: '玉蘭花', petal: '#F5EBD2', edge: '#CDBB8E', center: '#C9A46A' },
+  bougainvillea: { name: '九重葛', petal: '#B9667F', edge: '#8E4A60', center: '#EADDB0' },
+  kapok: { name: '木棉花', petal: '#BC725F', edge: '#8E4E3E', center: '#C9A46A', special: true },
 };
 export const STARTER_PLANTS = ['jasmine', 'osmanthus', 'magnolia', 'bougainvillea'];
 export const STAGE_NAMES = ['種子', '發芽', '長葉', '開花'];

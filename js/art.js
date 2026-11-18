@@ -1,6 +1,7 @@
 // 心動綠洲｜美術：葉靈角色與花園場景（全部以程式原創繪製）
 // 風格規範見 docs/美術設計規範.md：圓潤、柔和漸層、同色系深色描邊、無尖角、低對比背景、高辨識角色。
 import { SPIRITS } from './content.js';
+import { streetBack, lakeWC, forestWC } from './street.js';
 
 let uid = 0;
 const nid = p => `${p}${++uid}`;
@@ -82,6 +83,19 @@ export function spiritArt(id, size = 120, { silhouette = false, mood = 'happy' }
 }
 
 // ---------- 花園場景（依真實時間變化） ----------
+// 全站共用的手繪質感定義（只放一次）：鉛筆線輕微抖動、網點
+export function paperDefs() {
+  return `<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+    <filter id="mmWobble" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="4" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="1.3" xChannelSelector="R" yChannelSelector="G"/></filter>
+    <filter id="mmWash" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="8" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation=".7" result="b"/><feColorMatrix in="b" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 .92 0" result="base"/><feMorphology in="b" operator="erode" radius="1.5" result="e"/><feComposite in="b" in2="e" operator="out" result="ring"/><feColorMatrix in="ring" type="matrix" values=".82 0 0 0 0 0 .82 0 0 0 0 0 .82 0 0 0 0 0 .6 0" result="ring2"/><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="1" seed="3" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.5 1.05" result="gm"/><feMerge result="m"><feMergeNode in="base"/><feMergeNode in="ring2"/></feMerge><feComposite in="m" in2="gm" operator="in"/></filter>
+    <filter id="mmBloom" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence type="fractalNoise" baseFrequency=".015" numOctaves="3" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="40" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="7"/></filter>
+    <pattern id="mmDots" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".9" fill="#414641" opacity=".22"/></pattern>
+    <pattern id="mmHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><path d="M0 1.2 H5 M0 3.8 H3.2" stroke="#2E2A24" stroke-width=".55" opacity=".22"/></pattern>
+    <pattern id="mmHatchLight" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><path d="M0 1.5 H5 M1 3.8 H5" stroke="#FFF8EA" stroke-width=".6" opacity=".28"/></pattern>
+    <pattern id="mmDotsLight" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".8" fill="#F5F0E4" opacity=".25"/></pattern>
+  </defs></svg>`;
+}
+
 export function timeOfDay(h = new Date().getHours()) {
   if (h >= 5 && h < 8) return 'dawn';
   if (h >= 8 && h < 16) return 'day';
@@ -90,30 +104,31 @@ export function timeOfDay(h = new Date().getHours()) {
 }
 
 const SKY = {
-  dawn: ['#F7C9A6', '#FBE6CF', '#D7ECEF'],
-  day: ['#A9D8EE', '#CFE8F2', '#EAF4E4'],
-  dusk: ['#F49A73', '#F8C79A', '#F6E2C2'],
-  night: ['#1D2A4C', '#34467A', '#566A9A'],
+  dawn: ['#E9C9AE', '#F3E4CF', '#E3E7DD'],
+  day: ['#BCD0D2', '#DCE5E1', '#F1ECDE'],
+  dusk: ['#D9A68C', '#EBCDB0', '#F1E4CF'],
+  night: ['#3A4757', '#53637A', '#728497'],
 };
 
-export function sceneBack(W, H, t) {
+export function sceneBack(W, H, t) { return streetBack(W, H, t); }
+export function sceneBackOld(W, H, t) {
   const id = nid('sky'), hz = nid('hz'), pd = nid('pd');
   const [a, b, c] = SKY[t];
   const night = t === 'night';
   const sun = t === 'night'
     ? `<circle cx="${W - 70}" cy="54" r="20" fill="#F6EFD2"/><circle cx="${W - 62}" cy="48" r="18" fill="${a}"/>`
-    : `<circle cx="${t === 'day' ? W - 72 : W - 60}" cy="${t === 'day' ? 50 : 96}" r="26" fill="${t === 'dusk' ? '#FFB067' : '#FFD66B'}" opacity=".95"/><circle cx="${t === 'day' ? W - 72 : W - 60}" cy="${t === 'day' ? 50 : 96}" r="38" fill="#FFE9A8" opacity=".25"/>`;
+    : `<circle cx="${t === 'day' ? W - 72 : W - 60}" cy="${t === 'day' ? 50 : 96}" r="26" fill="${t === 'dusk' ? '#D99A6C' : '#E3C27E'}" opacity=".9"/><circle cx="${t === 'day' ? W - 72 : W - 60}" cy="${t === 'day' ? 50 : 96}" r="38" fill="#F1DDAE" opacity=".3"/>`;
   const stars = night ? Array.from({ length: 22 }, (_, i) => {
     const x = (i * 97) % W, y = 12 + (i * 53) % 90;
     return `<circle class="twinkle" style="animation-delay:${(i % 5) * .6}s" cx="${x}" cy="${y}" r="${i % 3 ? 1.2 : 1.8}" fill="#FFF7D6"/>`;
   }).join('') : '';
   const cloud = (x, y, s, d) => `<g class="cloud" style="animation-duration:${d}s"><g transform="translate(${x} ${y}) scale(${s})" fill="#fff" opacity="${night ? .15 : .85}"><ellipse cx="0" cy="0" rx="22" ry="11"/><ellipse cx="18" cy="-6" rx="16" ry="12"/><ellipse cx="34" cy="2" rx="18" ry="9"/></g></g>`;
-  const m1 = night ? '#2E4566' : t === 'dusk' ? '#C98F86' : '#9FC3B0', m2 = night ? '#2A4A4A' : t === 'dusk' ? '#B79A6E' : '#8DBE87';
-  const hill = night ? '#355C47' : '#A9D38E', ground = night ? '#2F5A3E' : '#93C978';
+  const m1 = night ? '#46566A' : t === 'dusk' ? '#B9938A' : '#9FB3B4', m2 = night ? '#425650' : t === 'dusk' ? '#A9977A' : '#8FA58F';
+  const hill = night ? '#4C6455' : '#A7B994', ground = night ? '#455F4E' : '#98AE86';
   return `<defs>
       <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient>
-      <linearGradient id="${hz}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ground}"/><stop offset="1" stop-color="${night ? '#264A33' : '#7DB865'}"/></linearGradient>
-      <radialGradient id="${pd}" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="${night ? '#5C7BA8' : '#BFE6F5'}"/><stop offset="1" stop-color="${night ? '#3B5A86' : '#7FC3E0'}"/></radialGradient>
+      <linearGradient id="${hz}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ground}"/><stop offset="1" stop-color="${night ? '#3D5446' : '#86A07A'}"/></linearGradient>
+      <radialGradient id="${pd}" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="${night ? '#6E8496' : '#C9D8DA'}"/><stop offset="1" stop-color="${night ? '#55697C' : '#91A9AF'}"/></radialGradient>
     </defs>
     <rect width="${W}" height="${H}" fill="url(#${id})"/>
     ${stars}${sun}
@@ -121,25 +136,26 @@ export function sceneBack(W, H, t) {
     <path d="M0 150 L40 112 L78 136 L130 96 L176 132 L230 104 L282 138 L330 110 L${W} 140 V${H} H0Z" fill="${m1}" opacity=".7"/>
     <path d="M0 158 Q70 128 150 150 T300 142 T${W} 150 V${H} H0Z" fill="${m2}"/>
     <path d="M0 176 Q110 150 220 170 T${W} 166 V${H} H0Z" fill="${hill}"/>
+    <path d="M0 176 Q110 150 220 170 T${W} 166 V${H} H0Z" fill="url(#mmDots)" opacity=".7"/>
     <path d="M0 192 Q120 178 240 188 T${W} 186 V${H} H0Z" fill="url(#${hz})"/>
     <!-- 木棉樹（高雄市花） -->
     <g transform="translate(46 192)">
-      <path d="M-4 0 L-3 -54 Q-2 -62 0 -66 Q2 -62 3 -54 L4 0Z" fill="${night ? '#4A3A2C' : '#8A6440'}"/>
-      <path d="M0 -50 L-22 -70 M0 -58 L20 -78 M0 -64 L-6 -88 M-12 -60 L-26 -64 M10 -68 L28 -70" stroke="${night ? '#4A3A2C' : '#8A6440'}" stroke-width="3.5" stroke-linecap="round"/>
-      ${[[-22, -70], [20, -78], [-6, -88], [-26, -64], [28, -70], [6, -80], [-14, -78], [14, -62]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5.5" fill="${night ? '#8E4A3A' : '#E8553A'}"/><circle cx="${x}" cy="${y}" r="2" fill="${night ? '#A88B45' : '#FFC24A'}"/>`).join('')}
+      <path d="M-4 0 L-3 -54 Q-2 -62 0 -66 Q2 -62 3 -54 L4 0Z" fill="${night ? '#4A3E34' : '#7C6450'}"/>
+      <path d="M0 -50 L-22 -70 M0 -58 L20 -78 M0 -64 L-6 -88 M-12 -60 L-26 -64 M10 -68 L28 -70" stroke="${night ? '#4A3E34' : '#7C6450'}" stroke-width="3" stroke-linecap="round"/>
+      ${[[-22, -70], [20, -78], [-6, -88], [-26, -64], [28, -70], [6, -80], [-14, -78], [14, -62]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5.5" fill="${night ? '#8A5A4E' : '#BC725F'}" opacity=".92"/><circle cx="${x}" cy="${y}" r="2" fill="${night ? '#9A8458' : '#C9A46A'}"/>`).join('')}
     </g>
     <!-- 池塘 -->
     <g transform="translate(${W - 66} 206)">
       <ellipse cx="0" cy="0" rx="52" ry="15" fill="url(#${pd})"/>
-      <ellipse cx="-16" cy="-2" rx="9" ry="3.6" fill="${night ? '#3E6B4A' : '#6DB46F'}"/><ellipse cx="14" cy="3" rx="7" ry="3" fill="${night ? '#3E6B4A' : '#6DB46F'}"/>
-      <circle cx="16" cy="1" r="3" fill="${night ? '#B07A8C' : '#F6A9C2'}"/>
+      <ellipse cx="-16" cy="-2" rx="9" ry="3.6" fill="${night ? '#4C6455' : '#7E9A79'}"/><ellipse cx="14" cy="3" rx="7" ry="3" fill="${night ? '#4C6455' : '#7E9A79'}"/>
+      <circle cx="16" cy="1" r="3" fill="${night ? '#A07E82' : '#D9A99B'}"/>
       <path d="M-30 -4 Q-24 -6 -18 -4" stroke="#fff" stroke-width="1.5" opacity=".6" fill="none"/>
     </g>
     <!-- 小路與長椅 -->
-    <path d="M${W * 0.62} ${H} Q${W * 0.5} 250 ${W * 0.56} 214 T${W * 0.6} 190" fill="none" stroke="${night ? '#6B6A55' : '#E8D9B0'}" stroke-width="14" stroke-linecap="round" opacity=".8"/>
-    <g transform="translate(${W - 120} 196)" fill="${night ? '#5A4636' : '#A77B4F'}"><rect x="0" y="0" width="34" height="4" rx="2"/><rect x="0" y="-8" width="34" height="3" rx="1.5"/><rect x="3" y="4" width="3" height="8"/><rect x="28" y="4" width="3" height="8"/></g>
+    <path d="M${W * 0.62} ${H} Q${W * 0.5} 250 ${W * 0.56} 214 T${W * 0.6} 190" fill="none" stroke="${night ? '#6E6A5A' : '#E6DAC0'}" stroke-width="14" stroke-linecap="round" opacity=".8"/>
+    <g transform="translate(${W - 120} 196)" fill="${night ? '#5A4C40' : '#8E7158'}"><rect x="0" y="0" width="34" height="4" rx="2"/><rect x="0" y="-8" width="34" height="3" rx="1.5"/><rect x="3" y="4" width="3" height="8"/><rect x="28" y="4" width="3" height="8"/></g>
     <!-- 花圃邊 -->
-    <path d="M30 ${H - 4} Q${W / 2} ${H - 120} ${W - 30} ${H - 4}" fill="${night ? '#3D5E3F' : '#A2D184'}" opacity=".55"/>`;
+    <path d="M30 ${H - 4} Q${W / 2} ${H - 120} ${W - 30} ${H - 4}" fill="${night ? '#4A604C' : '#B2C29F'}" opacity=".55"/>`;
 }
 
 export function sceneFront(W, H, t) {
@@ -151,14 +167,15 @@ export function sceneFront(W, H, t) {
 // ---------- 品牌標誌：一片葉子與心跳線組成的「心動之葉」 ----------
 export function brandMark(size = 40) {
   return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true">
-    <path d="M24 44 C8 34 4 22 10 12 C16 4 24 8 24 14 C24 8 32 4 38 12 C44 22 40 34 24 44Z" fill="#164F43"/>
+    <path d="M24 44 C8 34 4 22 10 12 C16 4 24 8 24 14 C24 8 32 4 38 12 C44 22 40 34 24 44Z" fill="#355B4C"/>
     <path d="M10 26 H17 L20 19 L25 32 L28 24 H38" fill="none" stroke="#F7F5EC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M24 44 Q25 36 30 30" stroke="#D69B54" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M24 44 Q25 36 30 30" stroke="#C9A46A" stroke-width="2.4" fill="none" stroke-linecap="round"/>
   </svg>`;
 }
 
 // ---------- 心靈湖畔：湖、蓮花、水波、晨光；記錄過的心情會變成湖上的花 ----------
-export function lakeScene(flowers = 0) {
+export function lakeScene(flowers = 0) { return lakeWC(flowers); }
+export function lakeSceneOld(flowers = 0) {
   const g = nid('lk'), w = nid('wt');
   const lotus = Array.from({ length: Math.min(flowers, 9) }, (_, i) => {
     const x = 60 + (i * 47) % 300, y = 196 + (i * 23) % 70;
@@ -182,7 +199,8 @@ export function lakeScene(flowers = 0) {
 }
 
 // ---------- 活力森林：步道、陽光、樹木 ----------
-export function forestScene() {
+export function forestScene() { return forestWC(); }
+export function forestSceneOld() {
   const g = nid('fs');
   const tree = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})"><rect x="-4" y="-6" width="8" height="34" rx="3" fill="#7A5B3E"/><circle cx="0" cy="-22" r="24" fill="${c}"/><circle cx="-14" cy="-10" r="16" fill="${c}"/><circle cx="14" cy="-10" r="16" fill="${c}"/></g>`;
   return `<svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" role="img" aria-label="活力森林">

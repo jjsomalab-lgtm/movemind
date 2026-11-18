@@ -69,7 +69,7 @@ export const nextSuggestion = () => {
 };
 
 // ---------- 繪圖 ----------
-const leaf = (x, y, r, flip, c = '#3E8E5C') =>
+const leaf = (x, y, r, flip, c = '#5E9443') =>
   `<path d="M${x} ${y} q ${flip * r} ${-r * 0.9} ${flip * r * 1.9} ${-r * 0.35} q ${-flip * r * 0.7} ${r * 0.85} ${-flip * r * 1.9} ${r * 0.35}z" fill="${c}"/>`;
 
 function flower(type, cx, cy, s) {
@@ -109,19 +109,20 @@ function flower(type, cx, cy, s) {
 
 export function plantSVG(type, stage, x, y, s = 1) {
   // (x, y) = 土壤中心
-  let g = `<ellipse cx="${x}" cy="${y}" rx="${22 * s}" ry="${7 * s}" fill="#7A5634"/><ellipse cx="${x}" cy="${y - 1.5 * s}" rx="${18 * s}" ry="${4.5 * s}" fill="#8E6640"/>`;
+  // 紅陶花盆（台灣街屋門口常見的那種），墨線描邊
+  let g = `<path d="M${x - 17 * s} ${y + 1 * s}H${x + 17 * s}L${x + 12 * s} ${y + 17 * s}H${x - 12 * s}Z" fill="#C2663F" stroke="#3B2E28" stroke-width="1" stroke-opacity=".7"/><rect x="${x - 19 * s}" y="${y - 3 * s}" width="${38 * s}" height="${6 * s}" rx="${1.5 * s}" fill="#D27A50" stroke="#3B2E28" stroke-width="1" stroke-opacity=".7"/><ellipse cx="${x}" cy="${y - 2 * s}" rx="${16 * s}" ry="${2.6 * s}" fill="#6A4A36"/><path d="M${x - 14 * s} ${y + 6 * s}l${2 * s} ${8 * s}" stroke="#F3B48A" stroke-width="${1.6 * s}" opacity=".6"/>`;
   if (stage === 0) {
-    return g + `<ellipse cx="${x}" cy="${y - 4 * s}" rx="${4 * s}" ry="${3 * s}" fill="#5B3B1E"/><path d="M${x - 1 * s} ${y - 6.5 * s} q ${1 * s} ${-2 * s} ${3 * s} ${-2.5 * s}" stroke="#7BB662" stroke-width="${1.4 * s}" fill="none"/>`;
+    return g + `<ellipse cx="${x}" cy="${y - 4 * s}" rx="${4 * s}" ry="${3 * s}" fill="#6A513F"/><path d="M${x - 1 * s} ${y - 6.5 * s} q ${1 * s} ${-2 * s} ${3 * s} ${-2.5 * s}" stroke="#7E9A79" stroke-width="${1.4 * s}" fill="none"/>`;
   }
   const tall = type === 'kapok' ? 1.35 : 1;
   const h = (stage === 1 ? 14 : stage === 2 ? 32 : 40) * s * tall;
-  const stem = type === 'kapok' && stage === 3 ? '#7A5634' : '#4E9A63';
+  const stem = type === 'kapok' && stage === 3 ? '#7C6450' : '#4F7F3E';
   g += `<path d="M${x} ${y - 2 * s} C ${x - 3 * s} ${y - h * 0.4}, ${x + 3 * s} ${y - h * 0.7}, ${x} ${y - h}" stroke="${stem}" stroke-width="${(type === 'kapok' && stage === 3 ? 4 : 2.4) * s}" fill="none" stroke-linecap="round"/>`;
   if (stage === 1) {
-    g += leaf(x, y - h + 2 * s, 5 * s, -1, '#6DB46F') + leaf(x, y - h + 2 * s, 5 * s, 1, '#6DB46F');
+    g += leaf(x, y - h + 2 * s, 5 * s, -1, '#8CB85A') + leaf(x, y - h + 2 * s, 5 * s, 1, '#8CB85A');
     return g;
   }
-  g += leaf(x, y - h * 0.35, 8 * s, -1) + leaf(x, y - h * 0.5, 8 * s, 1) + leaf(x, y - h * 0.7, 6.5 * s, -1, '#55A36A');
+  g += leaf(x, y - h * 0.35, 8 * s, -1) + leaf(x, y - h * 0.5, 8 * s, 1) + leaf(x, y - h * 0.7, 6.5 * s, -1, '#6FA24C');
   if (stage === 2) {
     const p = PLANTS[type];
     return g + `<ellipse cx="${x}" cy="${y - h - 3 * s}" rx="${3.2 * s}" ry="${5 * s}" fill="${p.petal}" stroke="${p.edge}" stroke-width="1"/>`;
@@ -141,10 +142,10 @@ export function gardenSVG({ highlight = -1, time = timeOfDay() } = {}) {
     const sl = slots[i];
     const p = g.plots[i];
     if (p) plants += `<g class="${i === highlight ? 'grow' : ''}" style="transform-origin:${sl.x}px ${sl.y}px">${plantSVG(p.type, p.stage, sl.x, sl.y, sl.s)}</g>`;
-    else plants += `<ellipse cx="${sl.x}" cy="${sl.y}" rx="${20 * sl.s}" ry="${6 * sl.s}" fill="#000" opacity=".06" stroke="#6F8F5E" stroke-opacity=".5" stroke-width="2" stroke-dasharray="4 4"/>`;
+    else plants += `<ellipse cx="${sl.x}" cy="${sl.y}" rx="${20 * sl.s}" ry="${6 * sl.s}" fill="#414641" opacity=".06" stroke="#607D69" stroke-opacity=".55" stroke-width="2" stroke-dasharray="4 4"/>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="我的心動綠洲，種了 ${g.plots.length} 株植物">
-    ${sceneBack(W, H, time)}${plants}${sceneFront(W, H, time)}
+    <g filter="url(#mmWobble)">${sceneBack(W, H, time)}${plants}</g>${sceneFront(W, H, time)}
   </svg>`;
 }
 

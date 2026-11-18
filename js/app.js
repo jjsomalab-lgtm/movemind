@@ -5,11 +5,12 @@ import { gardenSVG, plantSVG, rewardHome, rewardWalk, checkin, canPlant, plant, 
 import { demoSVG, animateDemos } from './demos.js';
 import { petSound, suspendAudio } from './petsound.js';
 import { lifeState, growth, SHOP, roomSVG, diaryText } from './room.js';
-import { PETS, CARE, TRICKS, petLine, petSVG, petStats } from './pet.js';
+import { PETS, CARE, TRICKS, petLine, petSVG, petStats, petPortrait } from './pet.js';
 import { PLACES, getWeather, advise } from './weather.js';
 import { startMusic, stopMusic, GUIDE } from './meditate.js';
 import { KINDS, dueReminders, logKey, icsFor } from './reminders.js';
-import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG } from './art.js';
+import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG, paperDefs } from './art.js';
+import { shopWC } from './street.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, listenTap, stopListening, listenErrorText, listVoices, refreshVoice, whenIdle } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
@@ -107,7 +108,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v12.5（2026-11-18）';
+export const APP_VERSION = 'v14（2026-11-18）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -210,7 +211,7 @@ screens.petPick = () => {
   const p = S.get().profile; const sel = run.pickPet || p.petType;
   page('選一個夥伴', `
     <p class="lead">誰要陪你每天動一動呢？</p>
-    <div class="pet-pick">${Object.entries(PETS).map(([k, v]) => `<button class="pet-card ${sel === k ? 'on' : ''}" data-pickpet="${k}">${petSVG(k, 84)}<b>${v.name}</b><span>${v.kind}</span><small>${v.trait}</small></button>`).join('')}</div>
+    <div class="pet-pick">${Object.entries(PETS).map(([k, v]) => `<button class="pet-card ${sel === k ? 'on' : ''}" data-pickpet="${k}">${petPortrait(k, 'sit', 84)}<b>${v.name}</b><span>${v.kind}</span><small>${v.trait}</small></button>`).join('')}</div>
     <label class="field">幫牠取個名字（可以用預設的）
       <input id="petNameIn" type="text" maxlength="8" placeholder="${sel ? esc(PETS[sel].name) : '例如：小黑、咪寶'}" value="${esc(p.petType === sel ? p.petName : '')}">
     </label>
@@ -219,7 +220,7 @@ screens.petPick = () => {
     </label>
     <button class="btn primary big" data-act="petNext">${run.fromSettings ? '儲存' : '下一步'}</button>
   `, { back: run.fromSettings ? 'settings' : 'welcome' });
-  speak('誰要陪你每天動一動呢？可以選小狗阿福、小貓咪咪，或是長壽龜慢慢。');
+  speak('誰要陪你每天動一動呢？可以選台灣黑土狗阿福、橘白小貓柑仔，或是台灣斑龜慢慢。');
 };
 
 screens.place = () => {
@@ -1296,7 +1297,7 @@ function rubDone() {
 // ---------- 靜坐冥想（原創音樂，即時合成） ----------
 screens.meditate = () => {
   page('一起靜坐', `
-    <div class="med-stage" id="medStage">${petSVG(S.get().profile.petType || 'turtle', 150, { mood: 'calm' })}<p id="medGuide" class="med-guide">找一張穩固的椅子坐好</p><p id="medLeft" class="note"></p></div>
+    <div class="med-stage" id="medStage">${petPortrait(S.get().profile.petType || 'turtle', 'sleep', 150)}<p id="medGuide" class="med-guide">找一張穩固的椅子坐好</p><p id="medLeft" class="note"></p></div>
     <p class="note">坐著做，眼睛可以閉上，也可以睜開。覺得不舒服就隨時停下來。背景音樂是心動力原創，可以安心使用。</p>
     <div id="medPick">
       <h3 class="section-title">背景聲音</h3>
@@ -1631,7 +1632,8 @@ screens.knowledge = () => {
   const reads = new Set(S.get().reads);
   const cats = [...new Set(C.KNOWLEDGE.map(k => k.cat))];
   page('知識花園', `
-    <div class="know-hero"><p class="eyebrow">知識花園</p><h2>每天一張小卡，認識自己的身體與心情</h2><p class="note">已讀 ${reads.size} / ${C.KNOWLEDGE.length} 張</p></div>
+    <div class="scene-hero">${shopWC()}<div class="scene-cap"><b>知識花園</b><span>每天一張小卡，認識自己的身體與心情</span></div></div>
+    <div class="know-hero"><h2 class="sr-only">每天一張小卡，認識自己的身體與心情</h2><p class="note">已讀 ${reads.size} / ${C.KNOWLEDGE.length} 張</p></div>
     ${cats.map(cat => `<h3 class="section-title">${cat}</h3><div class="know-list">${C.KNOWLEDGE.filter(k => k.cat === cat).map(k => `
       <button class="know-card ${reads.has(k.id) ? 'read' : ''}" data-card="${k.id}"><span class="cat">${k.cat}</span><b>${k.title}</b><span class="state">${reads.has(k.id) ? '✓ 讀過了' : '點我閱讀'}</span></button>`).join('')}</div>`).join('')}
     <p class="note">知識卡為一般健康資訊，不是醫療建議；內容由團隊整理，待專業人員確認。身體有狀況請詢問醫師。</p>
@@ -1674,7 +1676,7 @@ screens.oasis = () => {
       <h3 class="card-title">紀念徽章（${got.size} / ${C.BADGES.length}）</h3>
       <div class="badges">${C.BADGES.map(b => `<div class="badge ${got.has(b.id) ? 'got' : ''}">${badgeSVG(b.icon, got.has(b.id))}<b>${b.name}</b><span>${got.has(b.id) ? b.desc : '還沒解鎖：' + b.desc}</span></div>`).join('')}</div>
     </section>
-    <button class="oasis-card" data-go="petHome"><div class="oasis-pic">${S.get().profile.petType ? petSVG(S.get().profile.petType, 110) : ''}</div><div><p class="eyebrow">心動夥伴</p><h3>${S.get().profile.petType ? esc(PETS[S.get().profile.petType].name) + '的小屋' : '選一個夥伴'}</h3><p class="note">餵點心、學把戲、一起靜坐</p></div></button>
+    <button class="oasis-card" data-go="petHome"><div class="oasis-pic">${S.get().profile.petType ? petPortrait(S.get().profile.petType, 'happy', 110) : ''}</div><div><p class="eyebrow">心動夥伴</p><h3>${S.get().profile.petType ? esc(PETS[S.get().profile.petType].name) + '的小屋' : '選一個夥伴'}</h3><p class="note">餵點心、學把戲、一起靜坐</p></div></button>
     <div class="quick">
       <button class="quick-item garden" data-go="garden">${icon('garden')}<b>心動綠洲花園</b><span>${g.plots.length} 株植物・${new Set((g.spirits || []).map(s => s.id)).size} 隻葉靈</span></button>
       <button class="quick-item week" data-go="week">${icon('chart')}<b>每週回顧</b><span>這週活動 ${w.total} 次</span></button>
@@ -2323,6 +2325,7 @@ setInterval(() => {
 registerJourney({ screens, page, go, speak, sayBtn, petals, petSVG, petName, lineURL });
 
 // ---------- 啟動 ----------
+document.body.insertAdjacentHTML('afterbegin', paperDefs()); // 手繪質感的共用濾鏡與網點（只放一次）
 setFont();
 S.ensureToday();
 // 從 LINE 打開時，自動改用手機瀏覽器開啟（LINE 支援 openExternalBrowser=1）

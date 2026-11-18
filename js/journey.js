@@ -38,11 +38,11 @@ function mapSVG(j) {
   const waves = Array.from({ length: 9 }, (_, i) => { const y = 90 + i * 52, x = i % 2 ? 236 : 20; return `<path d="M${x} ${y}c6-4 10 4 16 0s10 4 16 0" />`; }).join('');
   return `<svg class="jr-map" viewBox="0 0 300 560" role="img" aria-label="迺台灣地圖：目前在 ${esc(cur.name)}，已經到過 ${j.visited.length} 站">
     <defs>${PAPER_FILTER}</defs>
-    <rect width="300" height="560" rx="18" fill="#E4EEE6"/>
+    <rect width="300" height="560" rx="18" fill="#FBF6EA"/><rect x="6" y="6" width="288" height="548" rx="16" fill="#9CC9DF" opacity=".75" filter="url(#mmWash)"/>
     <rect width="300" height="560" rx="18" fill="#000" filter="url(#jrPaper)"/>
     <g fill="none" stroke="${TEAL}" stroke-width="1.6" stroke-linecap="round" opacity=".45">${waves}</g>
     <path d="${LAND}" fill="${SAGE}" transform="translate(4 5)"/>
-    <path d="${LAND}" fill="#F3EAD3" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="${LAND}" fill="#B9D27E" opacity=".8" filter="url(#mmWash)"/><path d="${LAND}" fill="#F2E3C2" fill-opacity=".55" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" filter="url(#mmWobble)"/>
     <path d="M150 120c10 40 8 90 18 140s20 90 4 150" fill="none" stroke="${SAGE}" stroke-width="7" stroke-linecap="round" opacity=".55"/>
     <path d="${routePath()}" fill="none" stroke="${BRICK}" stroke-width="2.4" stroke-dasharray="2 6" stroke-linecap="round" stroke-linejoin="round"/>
     ${STOPS.map((s, i) => {

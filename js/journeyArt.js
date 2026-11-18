@@ -2,7 +2,8 @@
 // 每張圖都是團隊自行繪製的幾何插畫，不使用任何既有角色、照片或商標。
 // 套色錯位（riso）做法：色塊往右下偏 1.6px，墨線疊在原位。
 
-export const INK = '#3A3833', PAPER = '#F6EFDF', BRICK = '#C45A3B', TEAL = '#2F7E77', MUSTARD = '#DDA43E', SAGE = '#8DB596', SKY = '#A9CFD1', ROSE = '#E7A79A';
+// 品牌色（與 css 的 design tokens 一致）
+export const INK = '#3B2E28', PAPER = '#FBF6EA', BRICK = '#D2492F', TEAL = '#3E8A84', MUSTARD = '#E0A93F', SAGE = '#8CB85A', SKY = '#7DB4D3', ROSE = '#EC9A86';
 
 // 每站插畫：fills＝色塊（不描邊）；lines＝墨線（不填色）；viewBox 0 0 64 64
 const ART = {
@@ -47,7 +48,7 @@ const ART = {
 // 單站插畫（套色錯位）
 export function stopArt(id, size = 64) {
   const a = ART[id]; if (!a) return '';
-  return `<svg class="jr-art" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true"><g transform="translate(1.6 1.6)">${a.fills}</g><g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${a.lines}</g></svg>`;
+  return `<svg class="jr-art" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true"><g transform="translate(1.6 1.6)">${a.fills}</g><g fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#mmWobble)">${a.lines}</g></svg>`;
 }
 
 // 紀念章：圓形印章，外圈站名、中間插畫（像車站紀念章）
@@ -55,7 +56,7 @@ let stampN = 0;
 export function stamp(stop, size = 120, { faded = false, rot = -6 } = {}) {
   const id = 'jrs' + (++stampN);
   const color = faded ? '#B8B2A3' : BRICK;
-  const art = faded ? '' : `<g transform="translate(30 30) scale(.94)" opacity=".95"><g transform="translate(1.6 1.6)">${ART[stop.id].fills}</g><g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ART[stop.id].lines}</g></g>`;
+  const art = faded ? '' : `<g transform="translate(30 30) scale(.94)" opacity=".95"><g transform="translate(1.6 1.6)">${ART[stop.id].fills}</g><g fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ART[stop.id].lines}</g></g>`;
   return `<svg class="jr-stamp" width="${size}" height="${size}" viewBox="0 0 120 120" role="img" aria-label="${stop.name}紀念章" style="transform:rotate(${rot}deg)">
     <defs><path id="${id}t" d="M18 60a42 42 0 0 1 84 0"/><path id="${id}b" d="M24 64a36 36 0 0 0 72 0"/></defs>
     <circle cx="60" cy="60" r="56" fill="${faded ? 'none' : '#FFF8EA'}" stroke="${color}" stroke-width="3" ${faded ? 'stroke-dasharray="5 6"' : ''}/>

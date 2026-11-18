@@ -777,3 +777,152 @@ html[data-scale="large"] .slot-grid { grid-template-columns: repeat(2, 1fr); } h
 .jr-mcard.got { background: #F3EAD3; border-color: #C45A3B; color: #C45A3B; }
 .jr-choice { border: 2px solid #3A3833; background: #FFF8EA; box-shadow: 3px 3px 0 #8DB596; }
 @media (prefers-reduced-motion: reduce) { .jr-pet, .jr-die, .jr-reward-icon { animation: none; } }
+
+/* =========================================================
+   台灣懷舊手繪主題（Taiwan Nostalgic Editorial，v13）
+   奶油紙白＋森林鼠尾草綠為主，磚紅、暖赭黃點綴；明體標題；細鉛筆線＋淡套色陰影
+   只在檔案最後覆寫，要回到舊配色時刪掉這一段即可。
+   ========================================================= */
+:root {
+  --sage-green: #607D69;   /* 森林鼠尾草綠（主色） */
+  --deep-green: #355B4C;   /* 深綠：主要按鈕（白字對比 7:1 以上） */
+  --cream: #F5F0E4;        /* 奶油紙白 */
+  --brick: #BC725F;        /* 復古磚紅（點綴） */
+  --ochre: #C9A46A;        /* 暖赭黃（點綴） */
+  --mist: #91A9AF;         /* 霧藍 */
+  --ink-grey: #414641;     /* 墨灰：內文 */
+  --forest: var(--deep-green); --forest-deep: #2A4A3E;
+  --sage: #E7EAE0; --ivory: var(--cream); --amber: var(--ochre); --amber-ink: #7A5A2A;
+  --blue: #56727A; --ink: var(--ink-grey); --muted: #5C615B; --line: #D9D2C1; --surface: #FBF8F0;
+  --danger: #A9452F; --mint: #7E9A79;
+  --shadow: 2px 3px 0 rgba(96, 125, 105, .22);
+}
+body { background-color: var(--cream); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .32 0 0 0 0 .24 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"); }
+body[data-scene="home"], body[data-scene="lake"], body[data-scene="forest"], body[data-scene="knowledge"], body[data-scene="oasis"] { background-color: var(--cream); background-attachment: fixed; }
+body[data-scene="home"] { background-image: linear-gradient(180deg, rgba(201, 164, 106, .16) 0, rgba(245, 240, 228, 0) 480px), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .32 0 0 0 0 .24 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"); }
+body[data-scene="lake"] { background-color: #ECEFEB; }
+body[data-scene="forest"] { background-color: #EEEEE3; }
+body[data-scene="knowledge"] { background-color: #F3EDE0; }
+body[data-scene="oasis"] { background-color: #EFEEE4; }
+/* 明體標題，內文維持黑體（好讀） */
+.top h1, h2, .hero-title, .card-title, .task-card h3, .lead, .q-card .q { font-family: 'Noto Serif TC', 'Noto Serif CJK TC', 'Songti TC', serif; letter-spacing: .03em; }
+.top h1, .hero-title, .task-card h3 { color: var(--ink-grey); }
+.eyebrow { color: var(--brick) !important; letter-spacing: .12em; }
+/* 卡片：細鉛筆線、淡淡套色陰影（不使用粗黑框） */
+.card, .q-card, .task-card, .ai-card, .oasis-card, .reward { border: 1.5px solid rgba(65, 70, 65, .55) !important; box-shadow: var(--shadow); background-color: var(--surface); }
+.task-card { background: linear-gradient(170deg, #FBF8F0 0%, #F3E9D3 100%); }
+.task-card.float { box-shadow: 3px 4px 0 rgba(201, 164, 106, .45); }
+/* 按鈕：深綠主按鈕；其他按鈕用細線框；按下會壓下去；主要按鈕仍至少 64px */
+.btn { border: 2px solid rgba(65, 70, 65, .6); border-radius: 14px; color: var(--ink-grey); box-shadow: 2px 2px 0 rgba(65, 70, 65, .12); transition: transform .08s, box-shadow .08s; }
+.btn:active { transform: translate(1px, 2px); box-shadow: none; }
+.btn.primary { background: var(--deep-green); color: #FBF8F0; border-color: var(--deep-green); box-shadow: 2px 3px 0 rgba(201, 164, 106, .7); }
+.btn.soft { background: #EFE9DA; border-color: rgba(65, 70, 65, .45); }
+.btn.ghost { border-color: var(--line); box-shadow: none; }
+.btn.line-btn { border-color: #06A94A; box-shadow: 2px 2px 0 rgba(65, 70, 65, .15); }
+.btn.danger { border-color: var(--danger); }
+.quick-item { border: 1.5px solid rgba(65, 70, 65, .5) !important; box-shadow: var(--shadow); }
+.mood-chip, .mood { border-color: rgba(65, 70, 65, .5) !important; }
+.garden-view { border-color: rgba(65, 70, 65, .35) !important; }
+/* 迺台灣：跟著品牌色 */
+.jr-map-wrap, .jr-postcard, .jr-reward { border: 1.5px solid rgba(65, 70, 65, .6) !important; box-shadow: 3px 3px 0 rgba(96, 125, 105, .3) !important; background: #F8F3E7 !important; }
+.jr-pc-label, .jr-head .eyebrow { color: var(--brick) !important; }
+.jr-pc-art { border-color: var(--brick) !important; }
+.jr-pc-mark { border-color: var(--brick) !important; color: var(--brick) !important; }
+.jr-title, .jr-pc-text b { color: var(--ink-grey) !important; }
+.jr-badge { border-color: rgba(65, 70, 65, .6) !important; background: var(--cream) !important; }
+.jr-badge.gold { background: #F1E3C6 !important; color: #6E5226 !important; }
+.jr-mcard { background: var(--sage-green) !important; border: 1.5px solid rgba(65, 70, 65, .6) !important; box-shadow: 2px 2px 0 rgba(65, 70, 65, .15) !important; }
+.jr-mcard.open { background: var(--surface) !important; color: var(--ink-grey) !important; }
+.jr-mcard.got { background: #F1E8D2 !important; color: var(--brick) !important; border-color: var(--brick) !important; }
+.jr-choice { border: 1.5px solid rgba(65, 70, 65, .6) !important; background: var(--surface) !important; box-shadow: 2px 2px 0 rgba(96, 125, 105, .25) !important; }
+.jr-home { border: 1.5px solid rgba(65, 70, 65, .5) !important; background: linear-gradient(120deg, #F6EEDC, #EBEEE3) !important; }
+.jr-home b { color: var(--deep-green) !important; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; }
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* 手繪插畫圖檔：輕輕呼吸（尊重減少動態） */
+.pet-portrait { display: block; object-fit: contain; animation: mmBreathe 3.6s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes mmBreathe { 50% { transform: scale(1.02, .985); } }
+@media (prefers-reduced-motion: reduce) { .pet-portrait { animation: none; } }
+
+/* =========================================================
+   台灣街屋水彩主題（v14）：鋼筆線稿＋水彩暈染，暖、有人情味
+   米白水彩紙、青綠窗框（主色）、燈籠紅、暖黃、天空藍；墨色細線
+   覆寫 v13，要回去就刪掉這一段。
+   ========================================================= */
+:root {
+  --wc-ink: #3B2E28;       /* 鋼筆墨色（暖褐黑） */
+  --wc-paper: #FBF6EA;     /* 水彩紙 */
+  --wc-teal: #2F7470;      /* 青綠窗框：主要按鈕（白字對比 5.6:1） */
+  --wc-teal-l: #DCEDE6;
+  --wc-red: #C8432B;       /* 燈籠紅 */
+  --wc-ochre: #E0A93F;     /* 暖黃 */
+  --wc-sky: #7DB4D3;       /* 天空藍 */
+  --wc-leaf: #5E9443;
+  --deep-green: var(--wc-teal); --sage-green: #3E8A84; --brick: var(--wc-red); --ochre: var(--wc-ochre);
+  --forest: var(--wc-teal); --forest-deep: #22524F; --ink-grey: var(--wc-ink); --ink: var(--wc-ink);
+  --muted: #6A5A4E; --line: #E3D5BC; --surface: #FFFCF4; --cream: var(--wc-paper); --ivory: var(--wc-paper);
+  --sage: #E9F1EA; --amber: var(--wc-ochre); --amber-ink: #7E5418; --danger: #B23A24; --blue: #3F7496;
+  --shadow: 0 2px 0 rgba(59, 46, 40, .06), 0 8px 18px -10px rgba(122, 82, 40, .35);
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* 水彩紙：暖米白＋淡淡的顏料暈染斑 */
+body, body[data-scene] {
+  background-color: var(--wc-paper);
+  background-image:
+    radial-gradient(60% 40% at 8% 0%, rgba(125, 180, 211, .18), transparent 70%),
+    radial-gradient(50% 35% at 100% 18%, rgba(224, 169, 63, .14), transparent 70%),
+    radial-gradient(45% 30% at 0% 100%, rgba(94, 148, 67, .10), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .36 0 0 0 0 .24 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+  color: var(--wc-ink);
+}
+body[data-scene="lake"] { background-color: #F6F6EE; }
+body[data-scene="forest"] { background-color: #F8F4E6; }
+.top { background: rgba(251, 246, 234, .92); backdrop-filter: blur(6px); border-bottom: 1.5px solid rgba(59, 46, 40, .35); }
+.top h1, .top h1 * { color: var(--wc-ink); }
+h2, .hero-title, .card-title, .task-card h3, .scene-cap b, .section-title { color: var(--wc-ink); }
+.eyebrow { color: var(--wc-red) !important; }
+/* 卡片：墨線細框＋紙張底＋一角淡淡的水彩 */
+.card, .q-card, .task-card, .ai-card, .oasis-card, .reward, .know-card, .tree-card {
+  border: 1.3px solid rgba(59, 46, 40, .55) !important; border-radius: 18px;
+  background-color: var(--surface);
+  background-image: radial-gradient(70% 60% at 100% 0%, rgba(125, 180, 211, .16), transparent 60%), radial-gradient(60% 50% at 0% 100%, rgba(224, 169, 63, .12), transparent 60%);
+  box-shadow: var(--shadow);
+}
+.task-card { background-image: radial-gradient(80% 70% at 100% 0%, rgba(200, 67, 43, .10), transparent 60%), radial-gradient(70% 60% at 0% 100%, rgba(94, 148, 67, .14), transparent 60%) !important; }
+.know-card.read { background-image: radial-gradient(70% 60% at 100% 0%, rgba(94, 148, 67, .18), transparent 60%); }
+.scene-hero { border: 1.3px solid rgba(59, 46, 40, .55); border-radius: 18px; box-shadow: var(--shadow); background: var(--wc-paper); }
+.scene-cap { background: linear-gradient(transparent, rgba(251, 246, 234, .96) 38%); }
+.scene-cap b { font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; }
+.hero-text { background: linear-gradient(180deg, rgba(251, 246, 234, .95) 0%, rgba(251, 246, 234, .8) 55%, rgba(251, 246, 234, 0) 100%) !important; }
+.hero-scene .garden-view { border-bottom: 1.3px solid rgba(59, 46, 40, .4) !important; }
+/* 按鈕：青綠窗框色主按鈕、紙色次按鈕；墨線框，按下壓一下 */
+.btn { border: 1.6px solid rgba(59, 46, 40, .6); background: var(--surface); color: var(--wc-ink); box-shadow: 0 2px 0 rgba(59, 46, 40, .18); }
+.btn.primary { background: var(--wc-teal); border-color: #22524F; color: #FFFCF4; box-shadow: 0 3px 0 #1C4643; }
+.btn.soft { background: #F6E9CF; border-color: rgba(59, 46, 40, .5); }
+.btn.ghost { background: transparent; border-color: var(--line); box-shadow: none; }
+.btn:active { transform: translateY(2px); box-shadow: none; }
+.help-btn { background: var(--wc-red) !important; }
+.icon-btn { border-color: rgba(59, 46, 40, .45); }
+.quick-item { border: 1.3px solid rgba(59, 46, 40, .5) !important; background: var(--surface) !important; }
+.quick-item:nth-child(4n+1) { background-image: radial-gradient(80% 80% at 100% 0%, rgba(125, 180, 211, .22), transparent 70%) !important; }
+.quick-item:nth-child(4n+2) { background-image: radial-gradient(80% 80% at 100% 0%, rgba(224, 169, 63, .22), transparent 70%) !important; }
+.quick-item:nth-child(4n+3) { background-image: radial-gradient(80% 80% at 100% 0%, rgba(94, 148, 67, .2), transparent 70%) !important; }
+.quick-item:nth-child(4n) { background-image: radial-gradient(80% 80% at 100% 0%, rgba(200, 67, 43, .14), transparent 70%) !important; }
+/* 底部選單：紙張底、選中時像蓋了一個青綠色的章 */
+.tabs { background: rgba(251, 246, 234, .96) !important; border-top: 1.5px solid rgba(59, 46, 40, .35) !important; }
+.tabs button.on { color: var(--wc-teal) !important; background: var(--wc-teal-l) !important; border-radius: 14px; }
+.bar i { background: linear-gradient(90deg, var(--wc-leaf), var(--wc-ochre)) !important; }
+/* 對話泡泡：像便條紙 */
+.pet-bubble, .roam-say, #roamSay { background: #FFFCF4 !important; border: 1.3px solid rgba(59, 46, 40, .55) !important; }
+/* 迺台灣卡片換成街屋配色 */
+.jr-map-wrap, .jr-postcard, .jr-reward { border-color: rgba(59, 46, 40, .55) !important; background: #FFFCF4 !important; box-shadow: var(--shadow) !important; }
+.jr-mcard { background: var(--wc-teal) !important; }
+.jr-mcard.got { color: var(--wc-red) !important; border-color: var(--wc-red) !important; }
+.jr-home { background: linear-gradient(120deg, #FCEFD6, #E3F0EA) !important; border-color: rgba(59, 46, 40, .5) !important; }
+.jr-home b { color: var(--wc-teal) !important; }
+.garland { display: block; margin: -.4rem 0 -.2rem; }
+/* 首頁街景：文字區的遮罩變淡，用紙色光暈保持好讀 */
+.hero-text { background: linear-gradient(180deg, rgba(251, 246, 234, .9) 0%, rgba(251, 246, 234, .55) 45%, rgba(251, 246, 234, 0) 78%) !important; }
+.hero-text .hero-title, .hero-text .hero-sub, .hero-text .eyebrow { text-shadow: 0 0 6px #FBF6EA, 0 0 14px #FBF6EA, 0 0 2px #FBF6EA; }
+.hero-text .hero-sub { color: #3B2E28; font-weight: 500; }
