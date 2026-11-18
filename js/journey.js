@@ -34,7 +34,7 @@ function routePath() {
 function mapSVG(j) {
   const cur = STOPS[j.pos];
   const pet = S.get().profile.petType;
-  const petMark = pet && D.petSVG ? `<foreignObject x="${cur.x - 26}" y="${cur.y - 64}" width="52" height="52"><div xmlns="http://www.w3.org/1999/xhtml" class="jr-pet">${D.petSVG(pet, 52)}</div></foreignObject>` : '';
+  const petMark = pet && D.petSVG ? `<foreignObject x="${cur.x - 26}" y="${cur.y - 64}" width="52" height="52"><div xmlns="http://www.w3.org/1999/xhtml" class="jr-pet">${D.petSVG(pet, 52, { mood: 'walk' })}</div></foreignObject>` : '';
   const waves = Array.from({ length: 9 }, (_, i) => { const y = 90 + i * 52, x = i % 2 ? 236 : 20; return `<path d="M${x} ${y}c6-4 10 4 16 0s10 4 16 0" />`; }).join('');
   return `<svg class="jr-map" viewBox="0 0 300 560" role="img" aria-label="迺台灣地圖：目前在 ${esc(cur.name)}，已經到過 ${j.visited.length} 站">
     <defs>${PAPER_FILTER}</defs>

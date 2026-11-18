@@ -1,7 +1,7 @@
 // 心動綠洲｜美術：葉靈角色與花園場景（全部以程式原創繪製）
 // 風格規範見 docs/美術設計規範.md：圓潤、柔和漸層、同色系深色描邊、無尖角、低對比背景、高辨識角色。
 import { SPIRITS } from './content.js';
-import { streetBack, lakeWC, forestWC } from './street.js';
+import { streetBack, lakeImg, forestImg } from './street.js';
 
 let uid = 0;
 const nid = p => `${p}${++uid}`;
@@ -174,7 +174,7 @@ export function brandMark(size = 40) {
 }
 
 // ---------- 心靈湖畔：湖、蓮花、水波、晨光；記錄過的心情會變成湖上的花 ----------
-export function lakeScene(flowers = 0) { return lakeWC(flowers); }
+export function lakeScene(flowers = 0) { return lakeImg(flowers); }
 export function lakeSceneOld(flowers = 0) {
   const g = nid('lk'), w = nid('wt');
   const lotus = Array.from({ length: Math.min(flowers, 9) }, (_, i) => {
@@ -199,7 +199,7 @@ export function lakeSceneOld(flowers = 0) {
 }
 
 // ---------- 活力森林：步道、陽光、樹木 ----------
-export function forestScene() { return forestWC(); }
+export function forestScene() { return forestImg(); }
 export function forestSceneOld() {
   const g = nid('fs');
   const tree = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})"><rect x="-4" y="-6" width="8" height="34" rx="3" fill="#7A5B3E"/><circle cx="0" cy="-22" r="24" fill="${c}"/><circle cx="-14" cy="-10" r="16" fill="${c}"/><circle cx="14" cy="-10" r="16" fill="${c}"/></g>`;

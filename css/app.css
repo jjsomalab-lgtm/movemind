@@ -955,3 +955,56 @@ body[data-scene="lake"] .fc-icon { background: #E3F0EA !important; }
 .med-stage { background: linear-gradient(#EAF3EE, #FBF6EA) !important; border: 1.3px solid rgba(59, 46, 40, .35); }
 #holdBtn.holding { background: var(--wc-teal) !important; border-color: var(--wc-teal) !important; }
 .jr-map-wrap, .jr-mcard, .jr-choice { box-shadow: var(--shadow) !important; }
+
+/* 夥伴圖檔（v15 色鉛筆繪本風）：輕輕呼吸；睡覺時呼吸變慢 */
+img.pet-img { display: block; object-fit: contain; animation: mmBreathe 3.6s ease-in-out infinite; transform-origin: 50% 92%; -webkit-user-drag: none; user-select: none; }
+img.pet-img.mood-calm { animation-duration: 6s; filter: saturate(.9); }
+.roam-pet img.pet-img { width: 80px; height: 80px; }
+@media (prefers-reduced-motion: reduce) { img.pet-img { animation: none; } }
+
+/* =========================================================
+   v16 色鉛筆植物手帳風（依團隊設計稿）
+   橄欖墨色文字、細鉛筆框卡片、角落枝葉、底部草地、名字底下一抹色塊
+   ========================================================= */
+:root { --wc-ink: #3B4433; --ink: #3B4433; --ink-grey: #3B4433; --muted: #5F6352; --pencil: #9AA585; }
+body { color: var(--wc-ink); }
+h1, h2, h3, .lead, .hero-title, .top h1, .scene-cap b, .section-title, .task-card h3 { color: var(--wc-ink) !important; }
+/* 頁首：左上角一串枝葉（裝飾，不影響點擊） */
+.top { position: sticky; background: rgba(250, 244, 230, .94) !important; border-bottom: 1.5px solid rgba(110, 122, 92, .5) !important; }
+.top::before { content: ''; position: absolute; left: 0; top: 0; width: 170px; height: 52px; background: url(../img/deco/leaf_tl.webp) left top / 170px auto no-repeat; opacity: .85; pointer-events: none; z-index: 0; }
+.top > * { position: relative; z-index: 1; }
+.top .icon-btn { background: rgba(255, 252, 244, .9); border: 1.6px solid rgba(80, 90, 64, .55); }
+/* 不舒服：蠟筆質感的紅 */
+.help-btn { background-color: #D9442F !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .9 0 0 0 -.9 .5'/%3E%3C/filter%3E%3Crect width='120' height='60' filter='url(%23n)'/%3E%3C/svg%3E") !important; box-shadow: 0 2px 0 rgba(120, 30, 20, .35); }
+/* 底部選單上緣：一排草地 */
+.tabs { overflow: visible !important; }
+.tabs::before { content: ''; position: absolute; left: 0; right: 0; top: -30px; height: 32px; background: url(../img/deco/grass_b.webp) center bottom / 100% auto no-repeat; pointer-events: none; opacity: .9; }
+/* 卡片：細鉛筆框 */
+.card, .q-card, .task-card, .ai-card, .oasis-card, .reward, .know-card, .tree-card, .plan-card, .quick-item, .scene-hero { border: 1.5px solid rgba(110, 122, 92, .6) !important; border-radius: 22px !important; }
+.lead::after { content: ''; display: inline-block; width: 46px; height: 38px; margin-left: .3rem; vertical-align: -6px; background: url(../img/deco/sprig.webp) center / contain no-repeat; }
+/* 選夥伴卡 */
+.pet-card { border: 1.6px solid rgba(110, 122, 92, .55) !important; border-radius: 24px !important; background: rgba(255, 252, 244, .6) !important; padding: .7rem .35rem 1rem !important; gap: .35rem !important; }
+.pet-card .pet-portrait, .pet-card img { width: 100%; max-width: 150px; height: auto; aspect-ratio: 1; }
+.pet-card b { position: relative; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; font-size: 1.45rem !important; letter-spacing: .12em; color: var(--wc-ink) !important; padding: .1rem 1.1rem; background: radial-gradient(ellipse 50% 46% at 50% 55%, var(--pill, #CFDDAA) 72%, transparent 100%); }
+.pet-card[data-pickpet="dog"] { --pill: #D3DFB0; }
+.pet-card[data-pickpet="cat"] { --pill: #F6CDB0; }
+.pet-card[data-pickpet="turtle"] { --pill: #CBD9D2; }
+.pet-card span { font-size: 1rem !important; color: var(--wc-ink) !important; }
+.pet-card small { font-size: .95rem !important; color: #4E5444 !important; line-height: 1.55 !important; }
+.pet-card.on { border-width: 2.4px !important; background: rgba(255, 248, 236, .95) !important; }
+.pet-card.on[data-pickpet="dog"] { border-color: #8FA36A !important; }
+.pet-card.on[data-pickpet="cat"] { border-color: #D9945E !important; }
+.pet-card.on[data-pickpet="turtle"] { border-color: #7E9C92 !important; }
+.pet-card b { white-space: nowrap; letter-spacing: .04em !important; padding: .1rem .55rem !important; font-size: 1.32rem !important; }
+.top::before { width: 140px; background-size: 140px auto; opacity: .6; }
+
+/* v17 團隊插畫場景：首頁花園背景依時間換圖（清晨窗台、白天街屋、晚上街屋加夜色） */
+.garden-view { background: url(../img/scenes/home_street.webp) center bottom / cover no-repeat; }
+.garden-view[data-time="dawn"] { background-image: url(../img/scenes/home_window.webp); }
+.garden-view[data-time="dusk"] { background-image: linear-gradient(rgba(232, 146, 90, .16), rgba(232, 146, 90, .16)), url(../img/scenes/home_street.webp); }
+.garden-view[data-time="night"] { background-image: linear-gradient(rgba(22, 33, 61, .45), rgba(22, 33, 61, .45)), url(../img/scenes/home_street.webp); }
+.room > svg { height: 300px; }
+.room-pet img.pet-img { width: 100%; height: auto; filter: drop-shadow(0 5px 5px rgba(60, 40, 20, .22)); }
+.room-pet.rubbed img.pet-img { animation: wiggle .25s ease-in-out infinite alternate; }
+.room-cap { background: rgba(255, 250, 238, .92) !important; border: 1.3px solid rgba(110, 122, 92, .5); }
+.bot-av img.pet-img { width: 40px; height: 40px; }

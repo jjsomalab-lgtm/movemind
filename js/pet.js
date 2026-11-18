@@ -53,7 +53,19 @@ export function petLine(screen, call, seed = 0) {
 // 阿福＝台灣黑土狗（四眼眉斑、圓眼鏡、卡其格紋圍巾、捧著熱茶、身邊一本書）
 // 柑仔＝橘白米克斯貓（磚紅格紋圍巾）；慢慢＝台灣斑龜（暖黃毛線帽）
 // 全部原創；不用粗黑漫畫框，線條是暖褐墨色、圓角收尾
+// 團隊色鉛筆繪本風圖檔（有圖就用圖，沒有就用下面的向量版）
+// 團隊色鉛筆繪本風圖檔：坐姿（sit）、開心（happy）、睡覺（sleep）、走路（walk，朝右）
+const POSES = ['sit', 'happy', 'sleep', 'walk'];
+const IMG = t => Object.fromEntries(POSES.map(k => [k, `img/pets/${t}_${k === 'sit' ? 'pick' : k}.webp`]));
+export const PET_IMG = { dog: IMG('dog'), cat: IMG('cat'), turtle: IMG('turtle') };
+// mood：calm＝睡覺、cheer＝開心揮手、walk＝走路、其他＝坐著
+const MOOD_POSE = { calm: 'sleep', sleep: 'sleep', cheer: 'happy', happy: 'sit', walk: 'walk' };
 export function petSVG(type, size = 96, { mood = 'happy' } = {}) {
+  const set = PET_IMG[type];
+  if (set) { const pose = MOOD_POSE[mood] || 'sit'; return `<img class="pet-svg pet-img pet-${type} pose-${pose} mood-${mood}" src="${set[pose]}" width="${size}" height="${size}" alt="" decoding="async" draggable="false">`; }
+  return petVector(type, size, { mood });
+}
+export function petVector(type, size = 96, { mood = 'happy' } = {}) {
   const L = '#2E241E';
   const ln = (w = 1.8, c = L) => `fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
   const fl = (c, w = 1.8) => `fill="${c}" stroke="${L}" stroke-width="${w}" stroke-linejoin="round"`;
@@ -145,11 +157,7 @@ export function petSVG(type, size = 96, { mood = 'happy' } = {}) {
 // ---------- 手繪插畫圖檔（色鉛筆風，團隊自製） ----------
 // 把圖檔放進 img/pets/，檔名照下面填好就會自動使用；沒有圖檔時改用上面的向量圖。
 // 姿勢：sit（坐著）、happy（開心）、sleep（睡覺）、walk（走路）
-export const PET_ART = {
-  dog: { sit: 'img/pets/dog_sit.webp' },   // 待補：happy、sleep、walk
-  cat: { sit: 'img/pets/cat_sit.webp', happy: 'img/pets/cat_happy.webp' },
-  turtle: { sit: 'img/pets/turtle_sit.webp', happy: 'img/pets/turtle_happy.webp' },
-};
+export const PET_ART = PET_IMG;
 export function petPortrait(type, pose = 'sit', size = 120) {
   const src = (PET_ART[type] || {})[pose] || (PET_ART[type] || {}).sit;
   if (!src) return petSVG(type, size, { mood: pose === 'sleep' ? 'calm' : 'happy' });

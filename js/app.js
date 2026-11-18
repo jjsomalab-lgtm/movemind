@@ -9,8 +9,8 @@ import { PETS, CARE, TRICKS, petLine, petSVG, petStats, petPortrait } from './pe
 import { PLACES, getWeather, advise } from './weather.js';
 import { startMusic, stopMusic, GUIDE } from './meditate.js';
 import { KINDS, dueReminders, logKey, icsFor } from './reminders.js';
-import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG, paperDefs } from './art.js';
-import { shopWC } from './street.js';
+import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG, paperDefs, timeOfDay } from './art.js';
+import { shopImg } from './street.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, listenTap, stopListening, listenErrorText, listVoices, refreshVoice, whenIdle } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
@@ -108,7 +108,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v14.2（2026-11-18）';
+export const APP_VERSION = 'v16 插畫場景（2026-11-18）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -211,7 +211,7 @@ screens.petPick = () => {
   const p = S.get().profile; const sel = run.pickPet || p.petType;
   page('選一個夥伴', `
     <p class="lead">誰要陪你每天動一動呢？</p>
-    <div class="pet-pick">${Object.entries(PETS).map(([k, v]) => `<button class="pet-card ${sel === k ? 'on' : ''}" data-pickpet="${k}">${petPortrait(k, 'sit', 84)}<b>${v.name}</b><span>${v.kind}</span><small>${v.trait}</small></button>`).join('')}</div>
+    <div class="pet-pick">${Object.entries(PETS).map(([k, v]) => `<button class="pet-card ${sel === k ? 'on' : ''}" data-pickpet="${k}">${petPortrait(k, 'sit', 140)}<b>${v.name}</b><span>${v.kind}</span><small>${v.trait}</small></button>`).join('')}</div>
     <label class="field">幫牠取個名字（可以用預設的）
       <input id="petNameIn" type="text" maxlength="8" placeholder="${sel ? esc(PETS[sel].name) : '例如：小黑、咪寶'}" value="${esc(p.petType === sel ? p.petName : '')}">
     </label>
@@ -717,7 +717,7 @@ screens.reward = () => {
     <div class="reward">
       ${mr ? `<div class="bubble bot" style="text-align:left">${esc(mr)}</div>` : ''}
       <p class="lead">${esc(r.title)}</p>
-      <div class="garden-view">${gardenSVG({ highlight: r.grown })}</div>
+      <div class="garden-view" data-time="${timeOfDay()}">${gardenSVG({ highlight: r.grown })}</div>
       <p>${esc(r.detail)} ${esc(grownText)}</p>
     </div>
     ${r.walk ? '<button class="btn line-btn" data-act="postcard">做一張散步明信片分享</button>' : ''}
@@ -736,7 +736,7 @@ function livingGarden(opts = {}) {
   const ids = [...new Set((g.spirits || []).map(s => s.id))].slice(0, 6);
   const spots = [[16, 76], [84, 72], [36, 90], [64, 92], [50, 70], [92, 90]];
   const spirits = ids.map((id, i) => `<button class="live-spirit" style="left:${spots[i][0]}%;top:${spots[i][1]}%;animation-delay:${i * .7}s" data-talk="${id}" aria-label="跟${esc(C.SPIRITS.find(s => s.id === id).name)}說話">${spiritSVG(id, 46)}</button>`).join('');
-  return `<div class="garden-view live">${gardenSVG(opts)}${spirits}</div>${ids.length ? '<p id="spiritTalk" class="spirit-talk">點一下花園裡的葉靈，聽聽它想說什麼</p>' : ''}`;
+  return `<div class="garden-view live" data-time="${timeOfDay()}">${gardenSVG(opts)}${spirits}</div>${ids.length ? '<p id="spiritTalk" class="spirit-talk">點一下花園裡的葉靈，聽聽它想說什麼</p>' : ''}`;
 }
 
 screens.garden = () => {
@@ -1071,7 +1071,7 @@ screens.chat = () => {
 
 function botRow(text, extra = '') {
   const t = S.get().profile.petType;
-  return `<div class="bot-row ${extra}">${t ? `<span class="bot-av">${petSVG(t, 40)}</span>` : ''}<div class="bubble bot">${text === null ? '<span class="dots"><i></i><i></i><i></i></span>' : esc(text)}</div></div>`;
+  return `<div class="bot-row ${extra}">${t ? `<span class="bot-av">${petSVG(t, 40, { mood: 'cheer' })}</span>` : ''}<div class="bubble bot">${text === null ? '<span class="dots"><i></i><i></i><i></i></span>' : esc(text)}</div></div>`;
 }
 
 // 帶到 LINE 的第一句話：有今天的心情就一起帶過去，讓小夥伴接得上話
@@ -1366,7 +1366,7 @@ function reminderPop() {
   const r = due[0], call = petCall();
   const text = r.kind === 'med' ? `${call}，該吃「${r.label}」了喔！` : r.kind === 'water' ? `${call}，${r.label}吧！` : `${call}，${r.label}的時間到了！`;
   if (run.lastRemSpoken !== r.id) { run.lastRemSpoken = r.id; setTimeout(() => speak(text), 300); }
-  return `<div class="rem-pop" role="alert">${S.get().profile.petType ? petSVG(S.get().profile.petType, 56) : ''}<div><p><b>${KINDS[r.kind].icon} ${esc(text)}</b></p>
+  return `<div class="rem-pop" role="alert">${S.get().profile.petType ? petSVG(S.get().profile.petType, 56, { mood: 'cheer' }) : ''}<div><p><b>${KINDS[r.kind].icon} ${esc(text)}</b></p>
     <div class="grid2"><button class="btn primary" data-remdone="${r.id}">${r.kind === 'med' ? '吃過了' : '好了'}</button><button class="btn" data-remlater="${r.id}">等一下再提醒</button></div></div></div>`;
 }
 
@@ -1632,7 +1632,7 @@ screens.knowledge = () => {
   const reads = new Set(S.get().reads);
   const cats = [...new Set(C.KNOWLEDGE.map(k => k.cat))];
   page('知識花園', `
-    <div class="scene-hero">${shopWC()}<div class="scene-cap"><b>知識花園</b><span>每天一張小卡，認識自己的身體與心情</span></div></div>
+    <div class="scene-hero">${shopImg()}<div class="scene-cap"><b>知識花園</b><span>每天一張小卡，認識自己的身體與心情</span></div></div>
     <div class="know-hero"><h2 class="sr-only">每天一張小卡，認識自己的身體與心情</h2><p class="note">已讀 ${reads.size} / ${C.KNOWLEDGE.length} 張</p></div>
     ${cats.map(cat => `<h3 class="section-title">${cat}</h3><div class="know-list">${C.KNOWLEDGE.filter(k => k.cat === cat).map(k => `
       <button class="know-card ${reads.has(k.id) ? 'read' : ''}" data-card="${k.id}"><span class="cat">${k.cat}</span><b>${k.title}</b><span class="state">${reads.has(k.id) ? '✓ 讀過了' : '點我閱讀'}</span></button>`).join('')}</div>`).join('')}
@@ -2184,7 +2184,7 @@ function updateRoam() {
   const show = p.petType && p.petRoam !== false && !ROAM_HIDE.includes(currentScreen);
   el.hidden = !show; if (!show) return;
   el.classList.toggle('has-tabs', !!main().querySelector('.tabs'));
-  const body = el.querySelector('#roamBody'); if (body.dataset.pet !== p.petType) { body.innerHTML = petSVG(p.petType, 76); body.dataset.pet = p.petType; }
+  const body = el.querySelector('#roamBody'); if (body.dataset.pet !== p.petType) { body.innerHTML = petSVG(p.petType, 76, { mood: 'walk' }); body.dataset.pet = p.petType; }
   if (run.lastRoamScreen !== currentScreen) { run.lastRoamScreen = currentScreen; run.petSeed = (run.petSeed || 0) + 1; if (!run.sayingSticky && !(run.sayUntil > Date.now())) petSay(petLine(currentScreen, petCall(), run.petSeed), { quiet: true, ms: 4500 }); }
 }
 // 夥伴說話：泡泡＋（可選）語音＋（可選）動作按鈕

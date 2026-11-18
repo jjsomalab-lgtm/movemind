@@ -258,3 +258,15 @@ export function lanternGarland(W = 360, n = 5) {
     ${Array.from({ length: n }, (_, i) => { const x = step * (i + 1); const y = 6 + 24 * (1 - Math.pow((x - W / 2) / (W / 2), 2)) * .95 + 12; return lantern(x, y, .7); }).join('')}
   </svg>`;
 }
+
+// ---------- v17：團隊色鉛筆插畫背景（圖層），程式只疊互動元素 ----------
+const scene = (src, label, overlay = '', vb = '0 0 400 225') => `<svg viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${label}"><image href="${src}" x="0" y="0" width="400" height="225" preserveAspectRatio="xMidYMid slice"/>${overlay}</svg>`;
+export function lakeImg(flowers = 0) {
+  const lotus = Array.from({ length: Math.min(flowers, 9) }, (_, i) => {
+    const x = 40 + (i * 47) % 320, y = 168 + (i * 19) % 44;
+    return `<g transform="translate(${x} ${y})"><ellipse rx="15" ry="4.6" fill="#7E9F5A" opacity=".9"/>${[-36, -12, 12, 36].map(d => `<path d="M0 0 c-5 -8 -4 -15 0 -19 c4 4 5 11 0 19Z" fill="#F2B3BE" stroke="#C97C8C" stroke-width=".8" transform="rotate(${d})"/>`).join('')}<path d="M0 0 c-5 -9 -4 -17 0 -21 c4 4 5 12 0 21Z" fill="#F7CCD4" stroke="#C97C8C" stroke-width=".8"/></g>`;
+  }).join('');
+  return scene('img/scenes/lake_bg.webp', `心靈湖畔，湖上開了 ${flowers} 朵心情之花`, lotus);
+}
+export const forestImg = () => scene('img/scenes/forest_bg.webp', '活力森林：山間石階步道');
+export const shopImg = () => scene('img/scenes/knowledge_bg.webp', '知識花園：窗邊的植物圖鑑');

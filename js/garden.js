@@ -145,7 +145,7 @@ export function gardenSVG({ highlight = -1, time = timeOfDay() } = {}) {
     else plants += `<ellipse cx="${sl.x}" cy="${sl.y}" rx="${20 * sl.s}" ry="${6 * sl.s}" fill="#414641" opacity=".06" stroke="#607D69" stroke-opacity=".55" stroke-width="2" stroke-dasharray="4 4"/>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="我的心動綠洲，種了 ${g.plots.length} 株植物">
-    <g filter="url(#mmWobble)">${sceneBack(W, H, time)}${plants}</g>${sceneFront(W, H, time)}
+    <g>${plants}</g>${sceneFront(W, H, time)}
   </svg>`;
 }
 
