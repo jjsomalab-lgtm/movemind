@@ -9,6 +9,7 @@ import { PETS, CARE, TRICKS, petLine, petSVG, petStats, petPortrait } from './pe
 import { PLACES, getWeather, advise } from './weather.js';
 import { startMusic, stopMusic, GUIDE } from './meditate.js';
 import { KINDS, dueReminders, logKey, icsFor } from './reminders.js';
+import { unlockReplyAudio, playReplyAudio, stopReplyAudio } from './replyAudio.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG, paperDefs, timeOfDay } from './art.js';
 import { shopImg } from './street.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, listenTap, stopListening, listenErrorText, listVoices, refreshVoice, whenIdle } from './speech.js';
@@ -108,7 +109,7 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v16 插畫場景（2026-11-18）';
+export const APP_VERSION = 'v17 AI 聊天語音（2026-11-23）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
@@ -174,6 +175,7 @@ export function go(name, ...args) {
     return stopWalk();
   }
   cleanup(name);
+  if (name !== 'chat') stopReplyAudio(); // 離開聊天頁就停止寵物語音
   currentScreen = screens[name] ? name : 'today';
   (screens[name] || screens.today)(...args);
   if (['today', 'lake', 'forest', 'knowledge', 'oasis', 'activities', 'walk', 'garden', 'week', 'journey'].includes(name)) history.replaceState(null, '', '#' + name);
@@ -1064,7 +1066,7 @@ screens.chat = () => {
       <button type="submit" class="btn send">送出</button>
     </form>
     ${ai ? lineCard : ''}
-    ${ai ? '<p class="note">小夥伴是 AI，不是醫師或護理師，沒辦法診斷或開藥。請不要輸入身分證字號、病歷等個人資料。</p>' : ''}
+    ${ai ? '<p class="note">小夥伴是 AI，對話和聲音都是 AI 產生的，不是醫師或護理師，沒辦法診斷或開藥。緊急時請直接打 119；心裡很難受可以打 1925。請不要輸入身分證字號、病歷等個人資料。</p>' : ''}
   `, { back: 'today' });
   const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
 };
@@ -1093,7 +1095,7 @@ function chatExtras(flag) {
 
 function pushChat(who, text) {
   const s = S.get();
-  s.chat.push({ who, text });
+  s.chat.push({ who, text, at: new Date().toISOString() });
   s.chat = s.chat.slice(-40);
   S.save();
 }
@@ -1122,19 +1124,21 @@ async function intentReply(text) {
 // 只要這個格式不變，APP 介面怎麼改都不影響 n8n。新增欄位一律放進 context，n8n 會忽略看不懂的欄位。
 function chatPayload(text, mood) {
   const s = S.get();
-  const history = (s.chat || []).slice(-9, -1).map(m => ({ role: m.who === 'me' ? 'user' : 'pet', text: String(m.text).slice(0, 200) }));
+  const history = (s.chat || []).slice(-9, -1).map(m => ({ role: m.who === 'me' ? 'user' : 'pet', text: String(m.text).slice(0, 200), ...(m.at ? { at: m.at } : {}) }));
   const context = {
     mood: mood ? mood.label : '', allowed: s.today.allowed || '',
     pet: s.profile.petType || '', petName: petName(), call: petCall(),
     county: s.profile.county || '', weather: run.weatherAdvice ? run.weatherAdvice.text : '',
     plan: s.plan ? `${planFrom(s.plan)}的居家保養計畫` : '',
   };
-  return { v: 1, sessionId: S.chatSession(), text: text.slice(0, 300), history, context, ...context }; // 後面平鋪的欄位是相容舊版 n8n
+  return { v: 1, sessionId: S.chatSession(), text: text.slice(0, 300), history, context, ...context, // 後面平鋪的欄位是相容舊版 n8n
+           tts: !!s.profile.voice }; // 語音關閉時，n8n 就不產生語音
 }
 
 let chatBusy = false;
 async function sendChat(text) {
   text = text.trim(); if (!text || chatBusy) return;
+  unlockReplyAudio(); // iPhone 要在點擊當下解鎖播放，必須在第一個 await 之前
   const s = S.get();
   const crisisFirst = C.CHAT_RULES.find(r => (r.crisis || r.body) && r.keys.some(k => text.includes(k)));
   if (!crisisFirst) {
@@ -1167,10 +1171,10 @@ async function sendChat(text) {
   log.insertAdjacentHTML('beforeend', botRow(null, 'typing'));
   log.scrollTop = log.scrollHeight;
   chatBusy = true;
-  let reply = '', flag = null;
+  let reply = '', flag = null, audio = null;
   try {
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 15000);
+    const t = setTimeout(() => ctl.abort(), 25000); // 產生語音要多幾秒
     const mood = s.today.mood && C.MOODS.find(m => m.id === s.today.mood);
     const res = await fetch(C.AI_CHAT_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
@@ -1179,7 +1183,8 @@ async function sendChat(text) {
     clearTimeout(t);
     const data = await res.json();
     reply = String(data.reply || '').trim();
-    flag = data.flag || null;
+    flag = data.flag || flagOf(rule); // AI 回答時也保留「開始活動前確認」等按鈕
+    audio = data.audio || null;
   } catch (e) { reply = ''; }
   chatBusy = false;
   if (!reply) { // 連線失敗：退回預先設計的回應，展示不會中斷
@@ -1189,8 +1194,11 @@ async function sendChat(text) {
     if (s.profile.petType && !rule?.crisis && !rule?.body) reply = `${PETS[s.profile.petType].sound} ${reply}`;
   }
   pushChat('bot', reply);
-  if (currentScreen !== 'chat') return;
-  screens.chat(); (flag === 'crisis' || flag === 'body' ? speak(reply) : petVoice(reply.replace(/^(汪！|喵～|（慢慢點頭）)\s*/, ''))); chatExtras(flag);
+  if (currentScreen !== 'chat') return; // 長輩已離開聊天頁（例如按了「不舒服」）就不要蓋掉畫面
+  screens.chat();
+  chatExtras(flag); // 先顯示按鈕，再播聲音
+  const played = audio && S.get().profile.voice && await playReplyAudio(audio);
+  if (!played) (flag === 'crisis' || flag === 'body' ? speak(reply) : petVoice(reply.replace(/^(汪！|喵～|（慢慢點頭）)\s*/, '')));
 }
 
 // 寵物日記：記錄和主人一起做的事
@@ -1691,6 +1699,7 @@ function contactButtons() {
 }
 
 screens.help = () => {
+  stopReplyAudio();
   if (run.pose) { import('./pose.js').then(m => m.stopPose()); run.pose = false; }
   const msg = '先停下來，找地方坐下，慢慢深呼吸。';
   page('先停下來休息', `
@@ -1996,7 +2005,7 @@ const actions = {
     if (!(await nativeShare(text))) window.open(lineURL(text), '_blank');
   },
   shareWeek: async () => { if (!(await nativeShare(weeklyText()))) window.open(lineURL(weeklyText()), '_blank'); },
-  chatVoice: async () => { const t = await listenOnce(); if (t) sendChat(t); },
+  chatVoice: async () => { unlockReplyAudio(); const t = await listenOnce(); if (t) sendChat(t); },
   helpLine: () => sendHelp('line'),
   helpSms: () => sendHelp('sms'),
   pickVoice: () => {},
@@ -2209,6 +2218,7 @@ function petQuiet() { const el = roamEl(); el.classList.remove('talking'); run.s
 
 async function talkToPet(force = false) {
   if (run.listening) { stopListening(); return; }
+  unlockReplyAudio(); // 說完話後會送給 n8n，先在點擊當下解鎖播放
   // 這支手機的網頁語音辨識失敗過：直接打開打字框，並提示用鍵盤上的麥克風（iPhone 的聽寫比較穩）
   const fails = run.voiceFails || Number(sessionStorage.getItem('mm-voice-fail') || 0);
   if (!force && fails >= 1) { petType(); return; }

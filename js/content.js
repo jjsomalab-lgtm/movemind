@@ -169,7 +169,7 @@ export const EMERGENCY = { medical: '119', mental: '1925' };
 export const LINE_OA_ID = '@432vovoa';
 // 網頁聊天的 AI 大腦：n8n「網頁聊天」工作流程的 Webhook Production URL（見 line/LINE整合說明.md 第八節）
 // 留空時，APP 內聊天使用預先設計的回應（展示模式）
-export const AI_CHAT_URL = '';
+export const AI_CHAT_URL = 'https://n8n-production-d3b0.up.railway.app/webhook/movemind-chat';
 export const aiReady = () => /^https:\/\//.test(AI_CHAT_URL);
 export const lineReady = () => /^@[0-9a-z._-]+$/i.test(LINE_OA_ID);
 
