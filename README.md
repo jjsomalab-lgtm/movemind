@@ -1,4 +1,4 @@
-# 心動力 AI（MoveMind AI）｜初審展示版
+# 心動力 AI（MoveMind AI）｜展示版
 
 > 品牌名稱：心動力 AI（MoveMind AI）。「心動綠洲」是 APP 內的遊戲世界名稱，不是產品名稱。
 
