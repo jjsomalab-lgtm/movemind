@@ -193,7 +193,7 @@ export function markRead(id) {
 
 // 參與點數：只會增加。活動 2 點、其他各 1 點；迺台灣的動腦小卡另加點數
 export function points() {
-  return state.sessions.length * 2 + state.moods.length + state.breaths.length + (state.garden.spirits || []).length + state.reads.length + ((state.journey && state.journey.pts) || 0) + ((state.games && state.games.pts) || 0);
+  return state.sessions.length * 2 + state.moods.length + state.breaths.length + (state.garden.spirits || []).length + state.reads.length + ((state.journey && state.journey.pts) || 0) + ((state.games && state.games.pts) || 0) + ((state.heal && state.heal.pts) || 0);
 }
 
 export function earnedBadges() {

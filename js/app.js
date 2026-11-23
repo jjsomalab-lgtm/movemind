@@ -18,6 +18,7 @@ import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
 import { registerJourney, homeCard as journeyHomeCard } from './journey.js';
 import { registerGames, homeCard as gamesHomeCard, restButton, gamesBack, gameTiles } from './games.js';
+import { registerHealing, healCard } from './healing.js';
 
 const $ = sel => document.querySelector(sel);
 const main = () => $('#main');
@@ -72,7 +73,7 @@ function header(title, { back = null } = {}) {
 }
 
 // 六大場景：首頁、心靈湖畔、活力森林、歡樂老街（散步＋遊戲）、知識花園、我的綠洲
-const TAB_OF = { activities: 'forest', walk: 'plaza', walking: 'plaza', games: 'plaza', fortune: 'plaza', album: 'plaza', quiz: 'plaza', garden: 'oasis', week: 'oasis' };
+const TAB_OF = { heal: 'lake', activities: 'forest', walk: 'plaza', walking: 'plaza', games: 'plaza', fortune: 'plaza', album: 'plaza', quiz: 'plaza', garden: 'oasis', week: 'oasis' };
 function nav(active) {
   active = TAB_OF[active] || active;
   const items = [['today', '首頁', 'home'], ['lake', '心靈湖畔', 'lake'], ['forest', '活力森林', 'forest'], ['plaza', '歡樂老街', 'lantern'], ['knowledge', '知識花園', 'book'], ['oasis', '我的綠洲', 'tree']];
@@ -111,11 +112,11 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v19 歡樂老街（2026-11-23）';
+export const APP_VERSION = 'v20 心動療癒站（2026-11-23）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
-  today: 'home', lake: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
+  today: 'home', lake: 'lake', heal: 'lake', heal_sound: 'lake', heal_breath: 'lake', heal_hand: 'lake', heal_scan: 'lake', heal_laugh: 'lake', heal_thanks: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
   forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', checkSummary: 'forest', companion: 'forest', afterMood: 'forest', stopToday: 'forest',
   plaza: 'plaza', walk: 'plaza', walking: 'plaza',
   knowledge: 'knowledge', card: 'knowledge',
@@ -437,7 +438,7 @@ screens.today = () => {
         <p class="note">這週活動 ${w.total} 次${w.km ? `・散步 ${w.km.toFixed(1)} 公里` : ''}</p></div>
     </button>
     <div class="quick">
-      <button class="quick-item lake" data-go="lake">${icon('lake')}<b>心靈湖畔</b><span>呼吸與放鬆</span></button>
+      <button class="quick-item lake" data-go="lake">${icon('lake')}<b>心靈湖畔</b><span>療癒・放鬆</span></button>
       <button class="quick-item forest" data-go="forest">${icon('forest')}<b>活力森林</b><span>在家動一動</span></button>
       <button class="quick-item walk" data-go="plaza">${icon('lantern')}<b>歡樂老街</b><span>散步・動腦遊戲</span></button>
       <button class="quick-item know" data-go="knowledge">${icon('book')}<b>知識花園</b><span>健康小知識</span></button>
@@ -1617,6 +1618,7 @@ screens.lake = () => {
         : `<button class="feel" data-feel="${f.id}">${f.label}</button>`).join('')}</div>
       ${reply ? `<div class="bubble bot">${esc(reply.text)}</div>${reply.btns}` : ''}
     </section>
+    ${healCard()}
     <button class="feature-card" data-go="breathe"><span class="fc-icon">💧</span><span><b>呼吸練習</b><br>吸 4 秒、吐 6 秒，完成可以得到一滴晨露</span></button>
     <button class="feature-card" data-go="meditate"><span class="fc-icon">🍃</span><span><b>靜坐冥想</b><br>3 或 5 分鐘，搭配雨聲或海浪</span></button>
     <button class="feature-card" data-go="mood"><span class="fc-icon">🌸</span><span><b>記錄今天的心情</b><br>點一下，湖上就開一朵花</span></button>
@@ -2372,6 +2374,7 @@ setInterval(() => {
 // ---------- 迺台灣（js/journey.js） ----------
 registerJourney({ screens, page, go, speak, sayBtn, petals, petSVG, petName, lineURL });
 registerGames({ screens, page, go, speak, sayBtn, petals, petName, canListen, listenOnce, run });
+registerHealing({ screens, page, go, speak, sayBtn, petals, petName, canListen, listenOnce, run });
 
 // ---------- 啟動 ----------
 document.body.insertAdjacentHTML('afterbegin', paperDefs()); // 手繪質感的共用濾鏡與網點（只放一次）

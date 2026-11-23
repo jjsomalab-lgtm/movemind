@@ -170,6 +170,6 @@ export function petStats(state) {
   // 喝水每天最多算 4 點，避免一直按
   const byDay = {}; (state.drinks || []).forEach(d => { const k = d.at.slice(0, 10); byDay[k] = Math.min(4, (byDay[k] || 0) + 1); });
   const drinkPts = Object.values(byDay).reduce((x, y) => x + y, 0);
-  const earned = state.sessions.length * 2 + state.breaths.length + (state.meditations || []).length + state.moods.length + drinkPts + ((state.journey && state.journey.pts) || 0) + ((state.games && state.games.pts) || 0); // 迺台灣與遊戲館動腦小卡的點數也能換零食
+  const earned = state.sessions.length * 2 + state.breaths.length + (state.meditations || []).length + state.moods.length + drinkPts + ((state.journey && state.journey.pts) || 0) + ((state.games && state.games.pts) || 0) + ((state.heal && state.heal.pts) || 0); // 迺台灣與遊戲館動腦小卡的點數也能換零食
   return { points: Math.max(0, earned - p.spent), treats: p.treats, tricks: TRICKS.filter(t => p.treats >= t.at) };
 }
