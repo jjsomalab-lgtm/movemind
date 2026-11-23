@@ -11,12 +11,13 @@ import { startMusic, stopMusic, GUIDE } from './meditate.js';
 import { KINDS, dueReminders, logKey, icsFor } from './reminders.js';
 import { unlockReplyAudio, playReplyAudio, stopReplyAudio } from './replyAudio.js';
 import { brandMark, lakeScene, forestScene, treeOfLife, badgeSVG, paperDefs, timeOfDay } from './art.js';
-import { shopImg } from './street.js';
+import { shopImg, streetImg } from './street.js';
 import { speak, stopSpeaking, canListen, listenOnce, voiceStatus, canSpeak, voiceHeard, speakTest, unlockMediaChannel, listenTap, stopListening, listenErrorText, listVoices, refreshVoice, whenIdle } from './speech.js';
 import { createWalk, getPosition, meters } from './walk.js';
 import { findParks, bearingText, walkMinutes, gmapsWalkURL } from './places.js';
 import { lineURL, smsURL, weeklyText, helpText, nativeShare, lineOaChatURL } from './share.js';
 import { registerJourney, homeCard as journeyHomeCard } from './journey.js';
+import { registerGames, homeCard as gamesHomeCard, restButton, gamesBack, gameTiles } from './games.js';
 
 const $ = sel => document.querySelector(sel);
 const main = () => $('#main');
@@ -42,6 +43,7 @@ const I = {
   forest: '<path d="M8 21v-4M16 21v-6M8 17 4 17 8 9l4 8zM16 15h-5l5-10 5 10z"/>',
   book: '<path d="M4 5c3-1.5 5.5-1.5 8 0v15c-2.5-1.5-5-1.5-8 0zM20 5c-3-1.5-5.5-1.5-8 0v15c2.5-1.5 5-1.5 8 0z"/>',
   tree: '<path d="M12 21v-7M12 14c-4 0-7-2.5-7-6s3-5 7-5 7 1.5 7 5-3 6-7 6zM9 21h6"/>',
+  lantern: '<path d="M12 2v3M9 5h6M8 7.5c0-1.4 1.8-2.5 4-2.5s4 1.1 4 2.5v7c0 1.4-1.8 2.5-4 2.5s-4-1.1-4-2.5zM10 5.5c-1 2.5-1 9 0 11.5M14 5.5c1 2.5 1 9 0 11.5M9 17h6M12 17v4M10.5 21h3"/>',
 };
 const icon = (k, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`;
 
@@ -69,11 +71,11 @@ function header(title, { back = null } = {}) {
   </header>`;
 }
 
-// 五大場景：首頁、心靈湖畔、活力森林、知識花園、我的綠洲
-const TAB_OF = { activities: 'forest', walk: 'forest', garden: 'oasis', week: 'oasis' };
+// 六大場景：首頁、心靈湖畔、活力森林、歡樂老街（散步＋遊戲）、知識花園、我的綠洲
+const TAB_OF = { activities: 'forest', walk: 'plaza', walking: 'plaza', games: 'plaza', fortune: 'plaza', album: 'plaza', quiz: 'plaza', garden: 'oasis', week: 'oasis' };
 function nav(active) {
   active = TAB_OF[active] || active;
-  const items = [['today', '首頁', 'home'], ['lake', '心靈湖畔', 'lake'], ['forest', '活力森林', 'forest'], ['knowledge', '知識花園', 'book'], ['oasis', '我的綠洲', 'tree']];
+  const items = [['today', '首頁', 'home'], ['lake', '心靈湖畔', 'lake'], ['forest', '活力森林', 'forest'], ['plaza', '歡樂老街', 'lantern'], ['knowledge', '知識花園', 'book'], ['oasis', '我的綠洲', 'tree']];
   return `<nav class="tabs" aria-label="主要選單"><button class="tab-settings" data-go="settings">${icon('gear')}<span>設定</span></button>${items.map(([id, label, ic]) =>
     `<button data-go="${id}" class="${active === id ? 'on' : ''}" ${active === id ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></button>`).join('')}</nav>`;
 }
@@ -109,14 +111,16 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v17 AI 聊天語音（2026-11-23）';
+export const APP_VERSION = 'v19 歡樂老街（2026-11-23）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
   today: 'home', lake: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
-  forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', checkSummary: 'forest', companion: 'forest', afterMood: 'forest', walk: 'forest', walking: 'forest', stopToday: 'forest',
+  forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', checkSummary: 'forest', companion: 'forest', afterMood: 'forest', stopToday: 'forest',
+  plaza: 'plaza', walk: 'plaza', walking: 'plaza',
   knowledge: 'knowledge', card: 'knowledge',
   journey: 'oasis', journeyRoll: 'oasis', journeyCard: 'oasis', journeyReward: 'oasis', journeyBook: 'oasis', journeyShop: 'oasis',
+  games: 'plaza', fortune: 'plaza', album: 'plaza', quiz: 'plaza',
   oasis: 'oasis', garden: 'oasis', week: 'oasis', reward: 'oasis', postcard: 'oasis', settings: 'oasis',
 };
 
@@ -178,7 +182,7 @@ export function go(name, ...args) {
   if (name !== 'chat') stopReplyAudio(); // 離開聊天頁就停止寵物語音
   currentScreen = screens[name] ? name : 'today';
   (screens[name] || screens.today)(...args);
-  if (['today', 'lake', 'forest', 'knowledge', 'oasis', 'activities', 'walk', 'garden', 'week', 'journey'].includes(name)) history.replaceState(null, '', '#' + name);
+  if (['today', 'lake', 'forest', 'plaza', 'knowledge', 'oasis', 'activities', 'walk', 'garden', 'week', 'journey'].includes(name)) history.replaceState(null, '', '#' + name);
 }
 
 function cleanup() {
@@ -389,6 +393,7 @@ screens.today = () => {
       <button class="btn huge" data-go="mood">說說今天的心情</button>
       <button class="btn huge primary" ${task.attr}>${task.btn}</button>
       <button class="btn huge soft" data-go="journey">迺台灣（擲骰遊台灣）</button>
+      <button class="btn huge soft" data-go="plaza">歡樂老街（出門散步、擲筊、回憶卡、猜一題）</button>
       ${lineLink(lineOpener(), '跟小夥伴聊聊（LINE）', 'btn huge line-btn')}
       <button class="text-link" data-go="settings">設定（可關閉簡易模式）</button>
     `, { tab: 'today' });
@@ -415,6 +420,7 @@ screens.today = () => {
     </section>
     ${planCard()}
     ${journeyHomeCard(petName())}
+    ${gamesHomeCard()}
     ${rescreenDue() ? '<button class="btn soft" data-act="redoScreening">已經 3 個月了，請重新回答健康小問題</button>' : ''}
     ${fofDue() ? '<button class="btn soft" data-go="fof">每週小問題：走路時擔心跌倒嗎？</button>' : ''}
     <div class="home-grid">
@@ -433,7 +439,7 @@ screens.today = () => {
     <div class="quick">
       <button class="quick-item lake" data-go="lake">${icon('lake')}<b>心靈湖畔</b><span>呼吸與放鬆</span></button>
       <button class="quick-item forest" data-go="forest">${icon('forest')}<b>活力森林</b><span>在家動一動</span></button>
-      <button class="quick-item walk" data-go="walk">${icon('walk')}<b>出門散步</b><span>遇見葉靈</span></button>
+      <button class="quick-item walk" data-go="plaza">${icon('lantern')}<b>歡樂老街</b><span>散步・動腦遊戲</span></button>
       <button class="quick-item know" data-go="knowledge">${icon('book')}<b>知識花園</b><span>健康小知識</span></button>
     </div>
     <section class="ai-card">
@@ -575,7 +581,7 @@ screens.activities = () => {
     ${seatedOnly && effectiveLevel() !== 'seated' ? redoLink() : ''}
     ${seatedOnly && t.mood === 'tired' ? '<button class="tour-link" data-act="changeMood">心情好一點了嗎？更改今天的心情</button>' : ''}
     <div class="ex-list">${list}</div>
-    <section class="card walk-cta"><h3 class="card-title">${icon('walk')} 出門散步</h3><p>沿路開花、遇見葉靈，也幫花園澆水。</p><button class="btn big" data-go="walk">準備出門</button></section>
+    <button class="text-link" data-go="plaza">${icon('lantern')} 想出門散步、玩動腦遊戲？到「歡樂老街」</button>
     <button class="text-link" data-card="warning-signs">${icon('book')} 活動時，哪些訊號要停下來？</button>
   `, { tab: 'activities' });
   // 列表中的示範動畫先暫停，避免太多東西同時在動；進入活動頁才播放
@@ -602,7 +608,7 @@ function needsCompanion(kind) {
 // ---------- 活動進行 ----------
 screens.player = id => {
   const a = C.ACTIVITIES.find(x => x.id === id);
-  run.activity = a; run.reps = 0;
+  const resumed = run.resume && run.resume.id === id; run.activity = a; run.reps = resumed ? run.resume.reps : 0; run.resume = null;
   page(a.name, `
     <div class="demo-card">${demoSVG(a.id)}<p class="note">示範動畫（原創繪製），動作細節以下方口令為準</p></div>
     <div class="cue-card">
@@ -612,7 +618,7 @@ screens.player = id => {
     <p class="caution">${esc(a.caution)}</p>
     <p class="easier"><b>覺得太難：</b>${esc(a.easier)}</p>
     ${planBadge(a.id)}
-    <div class="counter" aria-live="polite"><span id="reps">0</span><small>/ ${a.reps} ${a.hold ? '次' : '下'}</small><span class="reps-note">${esc(a.repsNote || '')}</span></div>
+    <div class="counter" aria-live="polite"><span id="reps">${run.reps}</span><small>/ ${a.reps} ${a.hold ? '次' : '下'}</small><span class="reps-note">${esc(a.repsNote || '')}</span></div>
     <div id="poseBox" class="pose-box" hidden>
       <video id="cam" playsinline muted></video><canvas id="overlay"></canvas>
       <p id="poseStatus" class="pose-status"></p>
@@ -620,8 +626,9 @@ screens.player = id => {
     ${a.hold ? `<button class="btn huge primary" data-act="holdStart" id="holdBtn">開始保持 ${a.hold} 秒</button>` : '<button class="btn huge primary" data-act="rep">完成一下</button>'}
     ${a.pose === false ? '' : '<button class="btn ghost" data-act="pose" id="poseBtn">開鏡頭幫我數</button>'}
     <button class="btn" data-act="finishActivity">做完了</button>
+    ${restButton()}
   `, { back: 'activities' });
-  speak(`我們來做${a.name}。${a.cues.join('')}${a.caution}`);
+  speak(resumed ? `休息好了，我們繼續做${a.name}。` : `我們來做${a.name}。${a.cues.join('')}${a.caution}`);
 };
 
 function addRep() {
@@ -782,6 +789,35 @@ screens.garden = () => {
   `, { tab: 'garden' });
 };
 
+// ---------- 歡樂老街：出門散步＋動腦遊戲，放在同一個地方 ----------
+screens.plaza = () => {
+  S.ensureToday();
+  const s = S.get(), t = s.today, w = S.weekStats();
+  const doneWalk = s.sessions.some(x => x.type === 'walk' && S.dayKey(x.at) === t.date);
+  const g = s.garden || {};
+  const met = new Set((g.spirits || []).map(x => x.id)).size;
+  const walkLine = run.walk ? '散步記錄中，點下面回到散步畫面。'
+    : !t.allowed ? '出門前，先回答 3 個簡單問題。'
+    : t.allowed === 'standard' ? (doneWalk ? '今天已經走過了，真棒！想再走走也可以。' : '沿路開花、遇見葉靈，也幫花園澆水。')
+    : '依照今天的身體狀況，散步改天再去；可以先玩下面的動腦遊戲。';
+  const intro = '歡樂老街：可以出門散步，也可以坐著玩動腦遊戲。';
+  const banner = `<div class="scene-hero">${streetImg()}<div class="scene-cap"><b>歡樂老街</b><span>出門走走、動動腦，照自己的步調來</span></div></div>`;
+  page('歡樂老街', `${banner}
+    <section class="card plaza-walk">
+      <h3 class="card-title">${icon('walk')} 出門散步</h3>
+      <p>${walkLine}</p>
+      <p class="note">這週散步 ${w.km ? w.km.toFixed(1) : 0} 公里・遇見葉靈 ${met} / ${C.SPIRITS.length} 種</p>
+      <button class="btn big ${t.allowed === 'standard' || run.walk ? 'primary' : ''}" data-go="walk">${run.walk ? '回到散步畫面' : t.allowed && t.allowed !== 'standard' ? '看看說明' : '準備出門'}</button>
+      <button class="text-link" data-go="garden">${icon('garden')} 看我的葉靈圖鑑</button>
+    </section>
+    <h3 class="plaza-h">${icon('lantern')} 動腦遊戲 <span>坐著就能玩</span></h3>
+    ${gameTiles()}
+    <p class="note">遊戲點數和運動點數一起累積，可以換${esc(petName())}的點心。沒有排名，玩得開心最重要。</p>
+    ${sayBtn(intro)}
+  `, { tab: 'plaza' });
+};
+screens.games = () => screens.plaza();
+
 // ---------- 散步 ----------
 function weatherTip() {
   const now = new Date(), h = now.getHours(), m = now.getMonth() + 1;
@@ -798,7 +834,7 @@ screens.walk = () => {
     page('出門散步', `
       <div class="q-card"><p class="q">出門前，先回答 3 個簡單問題，確認今天身體狀況。</p></div>
       <button class="btn primary" data-act="walkCheck">開始確認</button>
-    `, { tab: 'walk' });
+    `, { tab: 'walk', back: 'plaza' });
     return;
   }
   if (t.allowed !== 'standard') {
@@ -810,7 +846,7 @@ screens.walk = () => {
       ${t.allowed === 'none' ? '' : '<button class="btn primary" data-go="activities">去做坐著的活動</button>'}
       ${redoLink('walk')}
       <button class="tour-link" data-act="walkDemo">示範散步（室內示範用，不需定位）</button>
-    `, { tab: 'walk' });
+    `, { tab: 'walk', back: 'plaza' });
     return;
   }
   const tip = weatherTip();
@@ -836,7 +872,7 @@ screens.walk = () => {
     <button class="btn huge primary" data-act="walkReal">${run.walkDest ? `開始散步・走去${esc(run.walkDest.name)}` : '開始散步'}</button>
     <p class="note">第一次使用時，手機會詢問能不能使用「位置」，請按「允許」。</p>
     <button class="tour-link" data-act="walkDemo">示範散步（室內示範用，不需定位）</button>
-  `, { tab: 'walk' });
+  `, { tab: 'walk', back: 'plaza' });
 };
 
 function parkListHTML() {
@@ -889,7 +925,7 @@ screens.walking = () => {
       <button class="btn" data-act="checkin">在這裡打卡</button>
     </div>
     <button class="btn huge primary" data-act="walkStop">結束散步</button>
-  `, { tab: 'walk' });
+  `, { tab: 'walk', back: 'plaza' });
   if (run.walk) { run.walk.attach($('#map')); return; }
   const ctl = createWalk($('#map'), {
     onUpdate: ({ km, seconds, last }) => {
@@ -1885,6 +1921,8 @@ const actions = {
     showMoodReply(hit ? hit[0] : 'ok');
   },
   rep: addRep,
+  gmRest: () => { run.quizBack = { id: run.activity?.id, reps: run.reps }; go('quiz'); },
+  gmBack: () => gamesBack(),
   pose: togglePose,
   finishActivity,
   toggleRoute: e => { S.get().profile.shareRoute = e.target.checked; S.save(); },
@@ -2333,6 +2371,7 @@ setInterval(() => {
 
 // ---------- 迺台灣（js/journey.js） ----------
 registerJourney({ screens, page, go, speak, sayBtn, petals, petSVG, petName, lineURL });
+registerGames({ screens, page, go, speak, sayBtn, petals, petName, canListen, listenOnce, run });
 
 // ---------- 啟動 ----------
 document.body.insertAdjacentHTML('afterbegin', paperDefs()); // 手繪質感的共用濾鏡與網點（只放一次）

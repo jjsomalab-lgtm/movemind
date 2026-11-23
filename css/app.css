@@ -1008,3 +1008,56 @@ h1, h2, h3, .lead, .hero-title, .top h1, .scene-cap b, .section-title, .task-car
 .room-pet.rubbed img.pet-img { animation: wiggle .25s ease-in-out infinite alternate; }
 .room-cap { background: rgba(255, 250, 238, .92) !important; border: 1.3px solid rgba(110, 122, 92, .5); }
 .bot-av img.pet-img { width: 40px; height: 40px; }
+
+/* ===== v18 動腦遊戲館：擲筊抽運動籤、老台灣回憶卡、動腦猜一題 ===== */
+.gm-home, .gm-tile { display: flex; align-items: center; gap: .9rem; width: 100%; min-height: 84px; padding: .9rem 1.1rem; border: 1.5px solid rgba(65, 70, 65, .5); border-radius: var(--radius); background: linear-gradient(120deg, #FBEBDD, #F3EFE2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow); }
+.gm-home b, .gm-tile b { display: block; font-size: 1.15rem; color: #9E2F1D; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; }
+.gm-home span span, .gm-tile span span { display: block; font-size: .95rem; color: var(--muted); }
+.gm-home-pic { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.gm-tile { min-height: 104px; margin-bottom: .8rem; }
+.gm-tile > .gm-jiao.mini + .gm-jiao.mini { margin-left: -.6rem; }
+.gm-tile-art { flex: none; width: 92px; line-height: 0; }
+.gm-tile-art .gm-art { width: 92px; height: auto; border-radius: 10px; }
+.gm-tile-q { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #2F7470; color: #FFF8EA; font-size: 1.7rem; font-weight: 900; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; border: 2px solid #3B3A33; }
+.gm-jiao { width: 120px; height: auto; display: block; }
+.gm-jiao.mini { width: 54px; }
+.gm-stage { display: flex; justify-content: center; align-items: flex-end; gap: 1.2rem; min-height: 150px; margin: 1rem 0 .4rem; padding: 1.2rem .5rem; border-radius: 20px; background: radial-gradient(ellipse at 50% 85%, #E9D3A8 0, #F6EBD3 55%, transparent 75%); }
+.gm-stage .gm-jiao.r { transform: scaleX(-1); }
+.gm-stage .gm-jiao.spin { animation: gmToss 1.3s cubic-bezier(.3, .7, .4, 1) both; }
+.gm-stage .gm-jiao.r.spin { animation-name: gmTossR; animation-delay: .06s; }
+.gm-stage .gm-jiao.land { animation: gmLand .35s ease-out both; }
+@keyframes gmToss { 0% { transform: translateY(0) rotate(0); } 45% { transform: translateY(-120px) rotate(540deg); } 100% { transform: translateY(0) rotate(1080deg); } }
+@keyframes gmTossR { 0% { transform: scaleX(-1) translateY(0) rotate(0); } 45% { transform: scaleX(-1) translateY(-100px) rotate(-500deg); } 100% { transform: scaleX(-1) translateY(0) rotate(-1080deg); } }
+@keyframes gmLand { 0% { transform: translateY(-10px) scale(1.05); } 100% { transform: translateY(0) scale(1); } }
+.gm-stage .gm-jiao.r.land { animation-name: gmLandR; }
+@keyframes gmLandR { 0% { transform: scaleX(-1) translateY(-10px) scale(1.05); } 100% { transform: scaleX(-1) translateY(0) scale(1); } }
+.gm-result { text-align: center; font-size: 1.25rem; font-weight: 800; color: #9E2F1D; margin: .4rem 0 1rem; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; }
+.gm-poem { margin: .4rem auto 1rem; max-width: 360px; padding: 1.2rem 1rem 1.4rem; background: #F9E3B4; border: 2px solid #9E2F1D; border-radius: 6px; box-shadow: 0 0 0 6px #F9E3B4, 0 0 0 8px #9E2F1D, var(--shadow); text-align: center; }
+.gm-poem-no { margin: 0 0 .8rem; font-size: 1rem; font-weight: 800; color: #9E2F1D; letter-spacing: .1em; }
+.gm-poem-lines { display: flex; flex-direction: row-reverse; justify-content: center; gap: .9rem; }
+.gm-poem-lines span { writing-mode: vertical-rl; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; font-size: 1.45rem; font-weight: 800; color: #3B3A33; letter-spacing: .18em; line-height: 1.2; }
+.gm-count { text-align: center; color: var(--muted); margin: .6rem 0; }
+.gm-album { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
+.gm-card { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .5rem; min-height: 130px; border-radius: 16px; border: 1.5px solid rgba(65, 70, 65, .5); background: var(--surface); font: inherit; color: var(--ink); cursor: pointer; }
+.gm-card .gm-art { width: 100%; height: auto; border-radius: 10px; }
+.gm-card b { font-size: 1.05rem; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; }
+.gm-card.locked { justify-content: center; background: repeating-linear-gradient(45deg, #EFE7D6 0 10px, #F6F0E3 10px 20px); cursor: default; }
+.gm-card.locked span { font-size: 2.4rem; font-weight: 900; color: #B5A88C; }
+.gm-bigcard { margin: .4rem auto 1rem; max-width: 340px; line-height: 0; border-radius: 18px; overflow: hidden; border: 2px solid rgba(65, 70, 65, .55); box-shadow: var(--shadow); }
+.gm-bigcard .gm-art { width: 100%; height: auto; }
+.gm-kind { display: inline-block; margin: 0 0 .5rem; padding: .2rem .8rem; border-radius: 999px; background: #2F7470; color: #FFF8EA; font-weight: 800; font-size: 1rem; }
+.gm-phrase { margin: 0 0 1rem; padding: 1rem; text-align: center; font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif; font-size: 1.7rem; font-weight: 900; letter-spacing: .08em; color: #3B3A33; background: #FFF8EA; border: 2px dashed #C8A96A; border-radius: 16px; }
+.gm-phrase em { font-style: normal; color: #C8432B; }
+@media (prefers-reduced-motion: reduce) { .gm-stage .gm-jiao.spin, .gm-stage .gm-jiao.land { animation: none; } }
+
+/* ---------- v19 歡樂老街：散步＋動腦遊戲（第 6 個場景） ---------- */
+.tabs { grid-template-columns: repeat(6, 1fr); padding-left: .1rem; padding-right: .1rem; }
+.tabs button span { white-space: nowrap; letter-spacing: -.02em; }
+@media (max-width: 400px) { .tabs button { font-size: 14px; } .tabs .ic { width: 26px; height: 26px; } }
+body[data-scene="plaza"] { background-color: #F7EFE3; background-image: linear-gradient(180deg, rgba(196, 92, 62, .10) 0, rgba(247, 239, 227, 0) 520px); background-attachment: fixed; }
+body[data-scene="plaza"] .card-title, .plaza-h { color: #8A3B26; }
+.plaza-h { display: flex; align-items: center; gap: .45rem; margin: 1.2rem .2rem .2rem; font-size: 1.2rem; font-weight: 900; }
+.plaza-h .ic { width: 26px; height: 26px; }
+.plaza-h span { font-size: 1rem; font-weight: 700; color: var(--muted); margin-left: auto; }
+.plaza-walk .text-link { margin-top: .3rem; }
+.quick-item.walk .ic { color: #A2462C; }

@@ -269,4 +269,5 @@ export function lakeImg(flowers = 0) {
   return scene('img/scenes/lake_bg.webp', `心靈湖畔，湖上開了 ${flowers} 朵心情之花`, lotus);
 }
 export const forestImg = () => scene('img/scenes/forest_bg.webp', '活力森林：山間石階步道');
+export const streetImg = () => scene('img/scenes/street_bg.webp', '歡樂老街：紅磚騎樓與燈籠');
 export const shopImg = () => scene('img/scenes/knowledge_bg.webp', '知識花園：窗邊的植物圖鑑');
