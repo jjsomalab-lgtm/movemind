@@ -1,4 +1,4 @@
-// 心動力 AI｜心動療癒站：聲音療癒、心跳呼吸、暖手輕揉、睡前放鬆、感恩小事、笑一笑
+// 心動力 AI｜心動療癒站：雙手充電、聲音療癒、心跳呼吸、暖手輕揉、睡前放鬆、感恩小事、笑一笑
 // 這裡提供陪伴與放鬆，不是醫療、不是治療，也不宣稱療效。所有聲音都由瀏覽器即時合成（團隊原創），不使用外部音檔。
 // 資料只存在這支手機（store.js 的 heal 欄位）。文字內容放在 content.js 的 HEAL_ 開頭常數。
 import * as S from './store.js';
@@ -19,6 +19,7 @@ function weekCount() {
 
 // ---------- 圖示（原創線條） ----------
 const ICON = {
+  touch: '<circle cx="6.5" cy="16.5" r="3.5"/><circle cx="17.5" cy="16.5" r="3.5"/><path d="M12 11.5s-4-2.4-4-5.3A2.2 2.2 0 0 1 12 5a2.2 2.2 0 0 1 4 1.2c0 2.9-4 5.3-4 5.3z"/>',
   sound: '<path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/>',
   breath: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   hand: '<path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12M11 11V5a1.5 1.5 0 0 1 3 0v6M14 11V6.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 6.5-6 6.5-2.6 0-4.2-1.4-5.4-3.6L4 13.6a1.4 1.4 0 0 1 2.4-1.4L8 14.5"/>',
@@ -100,6 +101,24 @@ export function startSound(kind, volume = .6) {
       const base = 2300 + Math.random() * 1500, n = 2 + Math.floor(Math.random() * 3);
       for (let i = 0; i < n; i++) timers.push(setTimeout(() => ac && tone(base, .14, .04, 'sine', base * 1.35), i * 170));
     });
+  } else if (kind === 'music') {
+    // 輕柔音樂：慢慢換和弦的長音，加上偶爾出現的五聲音階小旋律（團隊原創，即時合成）
+    const chords = [[130.81, 196, 261.63, 329.63], [110, 164.81, 220, 261.63], [87.31, 174.61, 220, 261.63], [98, 146.83, 196, 246.94]];
+    let ci = 0;
+    const pad = () => {
+      if (!ac) return;
+      const t = ac.currentTime;
+      chords[ci % chords.length].forEach(f => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.035, t + 3); g.gain.linearRampToValueAtTime(.035, t + 7); g.gain.linearRampToValueAtTime(0, t + 10.5);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + 11);
+      });
+      ci += 1;
+    };
+    pad(); timers.push(setInterval(pad, 8000));
+    const notes = [523.25, 587.33, 659.25, 783.99, 880];
+    every(1800, 4200, () => { const f = notes[Math.floor(Math.random() * notes.length)]; tone(f, 2.6, .035); });
   } else if (kind === 'chime') {
     const w = gain(.05); chain(noiseBuf('brown'), [filt('lowpass', 500), w]); lfo(w.gain, .12, .03);
     const notes = [523.25, 587.33, 659.25, 783.99, 880, 1046.5];                                // 五聲音階
@@ -108,7 +127,7 @@ export function startSound(kind, volume = .6) {
   return true;
 }
 export function stopSound() {
-  timers.forEach(clearTimeout); timers = [];
+  timers.forEach(t => { clearTimeout(t); clearInterval(t); }); timers = [];
   srcs.forEach(s => { try { s.stop(); } catch (e) { /* 忽略 */ } }); srcs = [];
   if (ac) { const c = ac; try { out.gain.linearRampToValueAtTime(0, c.currentTime + .4); } catch (e) { /* 忽略 */ } setTimeout(() => c.close().catch(() => {}), 500); }
   ac = null; out = null;
@@ -116,7 +135,10 @@ export function stopSound() {
 
 // 離開畫面時自動停止：每一拍都檢查畫面上的標記還在不在
 let tick = null;
-function stopAll() { clearInterval(tick); tick = null; stopSound(); }
+function stopAll() { clearInterval(tick); tick = null; stopSound(); releaseWake(); }
+let wake = null;
+async function keepAwake() { try { wake = await navigator.wakeLock?.request('screen'); } catch (e) { wake = null; } }
+function releaseWake() { try { wake?.release(); } catch (e) { /* 忽略 */ } wake = null; }
 const onStage = id => !!document.getElementById(id);
 
 // ---------- 療癒站首頁 ----------
@@ -173,6 +195,115 @@ function playSoundScreen() {
   }, 1000);
 }
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.max(0, s % 60)).padStart(2, '0')}`;
+
+// ---------- 雙手充電：兩隻大拇指按住才會充電，放開只是暫停（不扣分、不重來） ----------
+const tPick = { sound: 'music', min: 3, voice: true, oneHand: false };
+function touchScreen() {
+  stopAll();
+  const T = C.HEAL_TOUCH;
+  D.page('雙手充電', `
+    <div class="tc-hero" aria-hidden="true">${chargeArt(0)}</div>
+    <div class="q-card"><p class="q">${esc(T.intro)}</p>${D.sayBtn(T.intro)}</div>
+    <h3 class="hl-h">要搭配聲音嗎？</h3>
+    <div class="hl-sounds">${T.sounds.map(x => `<button class="hl-chip ${tPick.sound === x.id ? 'on' : ''}" data-hl="tsnd:${x.id}" aria-pressed="${tPick.sound === x.id}"><span aria-hidden="true">${x.emoji}</span>${x.name}</button>`).join('')}</div>
+    <h3 class="hl-h">充電多久？</h3>
+    <div class="answer-row three">${T.minutes.map(m => `<button class="btn choice ${tPick.min === m ? 'on' : ''}" data-hl="tmin:${m}" aria-pressed="${tPick.min === m}">${m} 分鐘</button>`).join('')}</div>
+    <h3 class="hl-h">陪伴方式</h3>
+    <button class="tc-opt ${tPick.voice ? 'on' : ''}" data-hl="topt:voice" aria-pressed="${tPick.voice}"><span class="tc-box" aria-hidden="true">${tPick.voice ? '✓' : ''}</span><span><b>${esc(D.petName())}用聲音陪我</b><span>每隔一段時間，輕輕提醒你放鬆</span></span></button>
+    <button class="tc-opt ${tPick.oneHand ? 'on' : ''}" data-hl="topt:oneHand" aria-pressed="${tPick.oneHand}"><span class="tc-box" aria-hidden="true">${tPick.oneHand ? '✓' : ''}</span><span><b>只用一隻手</b><span>${esc(T.oneHandNote)}</span></span></button>
+    <button class="btn huge primary" data-hl="touchGo">開始充電</button>
+    <p class="note">${esc(T.safety)}</p>
+  `, { back: 'heal' });
+}
+// 主視覺：一顆會充電的心（電量越多，心越滿、越亮）
+function chargeArt(pct) {
+  const h = 84 * pct / 100;
+  return `<svg viewBox="0 0 120 110" class="tc-heart" role="img" aria-label="心動力電量 ${Math.round(pct)}%">
+    <defs><clipPath id="tcClip"><path d="M60 100S8 70 8 34a24 24 0 0 1 52-14 24 24 0 0 1 52 14c0 36-52 66-52 66z"/></clipPath>
+      <linearGradient id="tcFill" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2F8A7A"/><stop offset="1" stop-color="#7CC4A8"/></linearGradient></defs>
+    <path d="M60 100S8 70 8 34a24 24 0 0 1 52-14 24 24 0 0 1 52 14c0 36-52 66-52 66z" fill="#F4EFE6"/>
+    <rect id="tcLevel" clip-path="url(#tcClip)" x="0" y="${102 - h}" width="120" height="${h + 4}" fill="url(#tcFill)"/>
+    <path d="M60 100S8 70 8 34a24 24 0 0 1 52-14 24 24 0 0 1 52 14c0 36-52 66-52 66z" fill="none" stroke="#1F5F54" stroke-width="2.5"/>
+    <path d="M64 30 50 58h11l-5 22 16-30H61z" fill="#FFF6D8" stroke="#C99A3A" stroke-width="1.4" stroke-linejoin="round"/>
+  </svg>`;
+}
+const TS = { total: 0, left: 0, L: null, R: null, started: false, active: false, breathAt: 0, lineAt: 0, li: 0, muted: false };
+function touchRun() {
+  stopAll();
+  const T = C.HEAL_TOUCH;
+  Object.assign(TS, { total: tPick.min * 60, left: tPick.min * 60, L: null, R: null, started: false, active: false, breathAt: 0, lineAt: 0, li: 0, muted: tPick.sound === 'none' });
+  D.page('雙手充電', `
+    <div class="tc-stage" id="hlTouch">
+      <div class="tc-top">${chargeArt(0)}<p class="tc-pct"><span>心動力</span> <b id="tcPct">0%</b></p></div>
+      <p class="tc-cue" id="tcCue" aria-live="polite">${tPick.oneHand ? T.cueStartOne : T.cueStart}</p>
+      <p class="tc-time" id="tcLeft">${fmt(TS.left)}</p>
+      <p class="tc-line" id="tcLine">${esc(T.lines[0])}</p>
+      <div class="tc-pads ${tPick.oneHand ? 'one' : ''}">
+        <div class="tc-pad" data-side="L" role="button" aria-label="左手大拇指按這裡"><i aria-hidden="true"></i><span>左手<br>大拇指</span></div>
+        <div class="tc-pad" data-side="R" role="button" aria-label="右手大拇指按這裡"><i aria-hidden="true"></i><span>右手<br>大拇指</span></div>
+      </div>
+    </div>
+    <div class="answer-row two">
+      ${tPick.sound === 'none' ? '' : `<button class="btn" data-hl="tmute">${TS.muted ? '🔈 打開聲音' : '🔇 先關聲音'}</button>`}
+      <button class="btn" data-hl="stop">先停在這裡</button>
+    </div>
+  `, { back: 'heal_touch' });
+  const stage = document.getElementById('hlTouch');
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+  stage.querySelectorAll('.tc-pad').forEach(pad => {
+    const side = pad.dataset.side;
+    pad.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      try { pad.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
+      TS[side] = e.pointerId; pad.classList.add('on'); touchUpdate();
+    });
+    const up = e => { if (TS[side] === e.pointerId) { TS[side] = null; pad.classList.remove('on'); touchUpdate(); } };
+    pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up); pad.addEventListener('lostpointercapture', up);
+  });
+  keepAwake();
+  tick = setInterval(() => {
+    if (!onStage('hlTouch')) return stopAll();
+    if (!TS.active) return;
+    TS.left = Math.max(0, TS.left - .25);
+    const now = Date.now();
+    // 呼吸提示：吸 4 秒、吐 6 秒
+    const ph = ((now - TS.breathAt) / 1000) % 10;
+    const cue = document.getElementById('tcCue'); if (cue) cue.textContent = ph < 4 ? T.inhale : T.exhale;
+    // 陪伴的話：每 20 秒換一句
+    if (now - TS.lineAt > 20000) {
+      TS.lineAt = now; TS.li = (TS.li + 1) % T.lines.length;
+      const line = TS.left < 25 ? T.lines[T.lines.length - 1] : T.lines[TS.li];
+      const el = document.getElementById('tcLine'); if (el) el.textContent = line;
+      if (tPick.voice) D.speak(line);
+    }
+    touchPaint();
+    if (TS.left <= 0) { stopAll(); finish('touch'); }
+  }, 250);
+}
+function touchUpdate() {
+  const T = C.HEAL_TOUCH;
+  const active = tPick.oneHand ? (TS.L !== null || TS.R !== null) : (TS.L !== null && TS.R !== null);
+  const was = TS.active; TS.active = active;
+  const stage = document.getElementById('hlTouch'); if (!stage) return;
+  stage.classList.toggle('active', active);
+  const cue = document.getElementById('tcCue');
+  if (active && !was) {
+    TS.breathAt = Date.now(); if (!TS.lineAt) TS.lineAt = Date.now();
+    try { navigator.vibrate?.(30); } catch (e) { /* 忽略 */ }
+    if (!TS.started) { TS.started = true; if (tPick.sound !== 'none' && !TS.muted) startSound(tPick.sound === 'music' ? 'music' : 'stream', .5); }
+    if (cue) cue.textContent = T.inhale;
+  } else if (!active) {
+    const one = TS.L !== null || TS.R !== null;
+    if (cue) cue.textContent = !TS.started ? (one && !tPick.oneHand ? T.cueOne : (tPick.oneHand ? T.cueStartOne : T.cueStart)) : (one ? T.cueOne : T.cuePause);
+  }
+}
+function touchPaint() {
+  const pct = 100 * (1 - TS.left / TS.total);
+  const lv = document.getElementById('tcLevel'), p = document.getElementById('tcPct'), t = document.getElementById('tcLeft');
+  if (lv) { const h = 84 * pct / 100; lv.setAttribute('y', 102 - h); lv.setAttribute('height', h + 4); }
+  if (p) p.textContent = `${Math.floor(pct)}%`;
+  if (t) t.textContent = fmt(Math.ceil(TS.left));
+}
 
 // ---------- 心跳呼吸 ----------
 function breathScreen() {
@@ -307,7 +438,7 @@ function finish(id) {
   const got = award(id);
   const o = C.HEAL_OPTIONS.find(x => x.id === id);
   const G = GUIDES[id] ? GUIDES[id]() : null;
-  const msg = G ? G.end : id === 'sound' ? '聽完了。希望現在的你，心裡比剛才更安靜一點。' : '做完了！呼吸慢下來，心也跟著慢下來了。';
+  const msg = G ? G.end : id === 'touch' ? C.HEAL_TOUCH.end : id === 'sound' ? '聽完了。希望現在的你，心裡比剛才更安靜一點。' : '做完了！呼吸慢下來，心也跟著慢下來了。';
   D.page('完成了', `
     <div class="hl-done" style="--hc:${o.color}"><span class="hl-ic big">${icon(id)}</span><b>${o.name}・完成</b></div>
     <div class="q-card"><p class="q">${esc(msg)}</p>${D.sayBtn(msg)}</div>
@@ -325,6 +456,14 @@ async function onClick(e) {
   switch (cmd) {
     case 'go': return arg === 'hub' ? D.go('heal') : D.go('heal_' + arg);
     case 'snd': pick.sound = arg; return soundScreen();
+    case 'tsnd': tPick.sound = arg; return touchScreen();
+    case 'tmin': tPick.min = +arg; return touchScreen();
+    case 'topt': tPick[arg] = !tPick[arg]; return touchScreen();
+    case 'touchGo': return D.go('heal_touchRun');
+    case 'tmute':
+      TS.muted = !TS.muted; b.textContent = TS.muted ? '🔈 打開聲音' : '🔇 先關聲音';
+      if (TS.muted) stopSound(); else if (TS.started) startSound(tPick.sound === 'music' ? 'music' : 'stream', .5);
+      return;
     case 'min': pick.min = +arg; return soundScreen();
     case 'preview': startSound(pick.sound); timers.push(setTimeout(stopSound, 5000)); return;
     case 'playSound': return playSoundScreen();
@@ -350,14 +489,14 @@ export function healCard() {
   const n = weekCount();
   return `<button class="hl-entry" data-go="heal">
     <span class="hl-entry-art" aria-hidden="true">${icon('breath')}</span>
-    <span><b>心動療癒站</b><span>${n ? `這 7 天照顧自己 ${n} 次・` : ''}聲音、呼吸、暖手、放鬆、感恩、笑一笑</span></span>
+    <span><b>心動療癒站</b><span>${n ? `這 7 天照顧自己 ${n} 次・` : ''}雙手充電、聲音、呼吸、暖手、放鬆、感恩、笑一笑</span></span>
   </button>`;
 }
 
 export function registerHealing(deps) {
   D = deps;
   Object.assign(deps.screens, {
-    heal: hubScreen, heal_sound: soundScreen, heal_breath: breathScreen,
+    heal: hubScreen, heal_touch: touchScreen, heal_touchRun: touchRun, heal_sound: soundScreen, heal_breath: breathScreen,
     heal_hand: () => guideIntro('hand'), heal_scan: () => guideIntro('scan'), heal_laugh: () => guideIntro('laugh'),
     heal_thanks: () => thanksScreen(),
   });

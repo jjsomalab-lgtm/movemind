@@ -56,7 +56,7 @@ function setFont() {
 }
 
 // 每一頁右上角的 LINE 聊聊：一鍵打開官方帳號，並帶入「我想聊聊」讓小夥伴問你想聊什麼
-const NO_LINE = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday', 'coach', 'store', 'book'];
+const NO_LINE = ['heal_touchRun', 'welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'check', 'checkSummary', 'companion', 'help', 'stopToday', 'coach', 'store', 'book'];
 function lineHeaderBtn() {
   if (NO_LINE.includes(currentScreen)) return '';
   if (!C.lineReady()) return `<button class="line-top" data-go="chat" aria-label="跟小夥伴聊聊">${icon('chat')}<span>聊聊</span></button>`;
@@ -112,11 +112,11 @@ function voicePill() {
   return `<div class="voice-pill"><button data-act="enableVoice">🔊 點一下，開啟語音朗讀</button><button class="x" data-act="dismissVoice" aria-label="先不用語音">×</button></div>`;
 }
 
-export const APP_VERSION = 'v20 心動療癒站（2026-11-23）';
+export const APP_VERSION = 'v21 雙手充電（2026-11-24）';
 
 // 每個畫面屬於哪個場景：決定背景氛圍與重點色
 const SCENE_OF = {
-  today: 'home', lake: 'lake', heal: 'lake', heal_sound: 'lake', heal_breath: 'lake', heal_hand: 'lake', heal_scan: 'lake', heal_laugh: 'lake', heal_thanks: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
+  today: 'home', lake: 'lake', heal: 'lake', heal_touch: 'lake', heal_touchRun: 'lake', heal_sound: 'lake', heal_breath: 'lake', heal_hand: 'lake', heal_scan: 'lake', heal_laugh: 'lake', heal_thanks: 'lake', breathe: 'lake', mood: 'lake', fof: 'lake', chat: 'lake',
   forest: 'forest', activities: 'forest', player: 'forest', check: 'forest', checkSummary: 'forest', companion: 'forest', afterMood: 'forest', stopToday: 'forest',
   plaza: 'plaza', walk: 'plaza', walking: 'plaza',
   knowledge: 'knowledge', card: 'knowledge',
@@ -137,7 +137,7 @@ function petals(n = 16) {
 }
 
 // 心動夥伴：每一頁都在，依畫面說不同的話；點寵物進小屋；按住麥克風跟牠說話
-const NO_PET = ['welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday', 'coach', 'store'];
+const NO_PET = ['heal_touchRun', 'welcome', 'petPick', 'place', 'setupWith', 'screening', 'screenResult', 'help', 'stopToday', 'coach', 'store'];
 function petName() { const p = S.get().profile; return p.petType ? (p.petName || PETS[p.petType].name) : '小夥伴'; }
 function petCall() { const p = S.get().profile; return p.petCall || p.name || '你'; }
 function petBar() { return ''; }
@@ -2217,7 +2217,7 @@ document.addEventListener('submit', e => {
 });
 
 // ---------- 自由走動的心動夥伴：點牠就能說話 ----------
-const ROAM_HIDE = [...NO_PET, 'player', 'walking', 'meditate', 'breathe', 'check', 'checkSummary', 'petHome', 'chat', 'reminders', 'settings'];
+const ROAM_HIDE = ['heal_touchRun', ...NO_PET, 'player', 'walking', 'meditate', 'breathe', 'check', 'checkSummary', 'petHome', 'chat', 'reminders', 'settings'];
 function roamEl() {
   let el = document.getElementById('petRoam');
   if (!el) {

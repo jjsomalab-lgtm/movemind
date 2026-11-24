@@ -1,6 +1,6 @@
 // 心動力 AI｜Service Worker：讓 APP 在網路不穩時也能打開
 // 更新程式後，請把 VERSION 數字加 1，手機才會換成新版本。
-const VERSION = 'mm-v20-heal';
+const VERSION = 'mm-v21-touch';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/app.js', './js/store.js', './js/content.js', './js/garden.js', './js/speech.js', './js/walk.js', './js/share.js', './js/pose.js', './js/demos.js', './js/art.js', './js/places.js', './js/pet.js', './js/petsound.js', './js/room.js', './js/weather.js', './js/meditate.js', './js/reminders.js', './js/journey.js', './js/journeyArt.js', './js/games.js', './js/healing.js', './js/street.js', './js/replyAudio.js', './img/pets/dog_happy.webp', './img/pets/dog_sleep.webp', './img/pets/dog_walk.webp', './img/pets/cat_happy.webp', './img/pets/cat_sleep.webp', './img/pets/cat_walk.webp', './img/pets/turtle_happy.webp', './img/pets/turtle_sleep.webp', './img/pets/turtle_walk.webp', './img/scenes/home_street.webp', './img/scenes/home_window.webp', './img/scenes/lake_bg.webp', './img/scenes/forest_bg.webp', './img/scenes/street_bg.webp', './img/scenes/knowledge_bg.webp', './img/scenes/room_bg.webp', './img/pets/dog_pick.webp', './img/pets/cat_pick.webp', './img/pets/turtle_pick.webp', './img/deco/leaf_tl.webp', './img/deco/sprig.webp', './img/deco/grass_b.webp',

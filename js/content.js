@@ -419,12 +419,13 @@ export const GAME_POINTS = { fortune: 1, cardRight: 2, cardTry: 1, quiz: 1, quiz
 // ---------- 心動療癒站（v20）：六種溫和的療癒方式 ----------
 // 說明：這裡提供陪伴與放鬆，不是醫療、不是治療；每段結束都不宣稱任何療效。
 export const HEAL_OPTIONS = [
+  { id: 'touch', name: '雙手充電', sub: '兩隻大拇指按住畫面，跟著呼吸，把心動力慢慢充飽', color: '#2F8A7A', isNew: true },
   { id: 'sound', name: '聲音療癒', sub: '雨聲、溪水、海浪、山林、風鈴，閉上眼睛聽一聽', color: '#5E87A3' },
   { id: 'breath', name: '心跳呼吸', sub: '跟著愛心慢慢變大變小，吸 4 秒、吐 6 秒', color: '#C46B6B' },
   { id: 'hand', name: '暖手輕揉', sub: '搓一搓、揉一揉，給自己的雙手一點溫暖', color: '#C08A3E' },
   { id: 'scan', name: '睡前放鬆', sub: '從頭到腳，一個地方一個地方放鬆下來', color: '#5B6FA8' },
   { id: 'thanks', name: '感恩小事', sub: '想一件今天值得感謝的小事，說給小夥伴聽', color: '#B5793F' },
-  { id: 'laugh', name: '笑一笑', sub: '跟著做「哈哈操」，笑出聲音，心情也鬆開', color: '#D08A2E', isNew: true },
+  { id: 'laugh', name: '笑一笑', sub: '跟著做「哈哈操」，笑出聲音，心情也鬆開', color: '#D08A2E' },
 ];
 
 export const HEAL_SOUNDS = [
@@ -435,6 +436,35 @@ export const HEAL_SOUNDS = [
   { id: 'chime', name: '騎樓風鈴', emoji: '🎐' },
 ];
 export const HEAL_MINUTES = [3, 5, 10];
+
+// 雙手充電（v20）：兩隻大拇指一起按住圓圈，按住的時候才會充電；放開只是暫停，不扣分、不重來
+export const HEAL_TOUCH = {
+  intro: '把手機平放在桌上或腿上，兩隻大拇指輕輕按住畫面下方的兩個圓圈。按住的時候，心動力就會慢慢充電；跟著畫面慢慢呼吸就好。',
+  sounds: [
+    { id: 'music', name: '輕柔音樂', emoji: '🎵' },
+    { id: 'nature', name: '大自然聲音', emoji: '🍃' },
+    { id: 'none', name: '安靜就好', emoji: '🤫' },
+  ],
+  minutes: [1, 3, 5],
+  oneHandNote: '手不方便、拿著柺杖，或只有一隻手方便時，可以只按一個圓圈。',
+  cueStart: '兩隻大拇指，一起按住下面的圓圈',
+  cueStartOne: '用一隻大拇指，按住下面任一個圓圈',
+  cueOne: '很好！另一隻大拇指也按上來',
+  cuePause: '休息一下也沒關係。準備好了，再按住就會繼續',
+  inhale: '慢慢吸氣…', exhale: '慢慢吐氣…',
+  lines: [
+    '肩膀放下來，手指輕輕按著就好，不用用力。',
+    '感覺大拇指下面暖暖的，心也跟著安靜下來。',
+    '吸氣的時候，肚子輕輕鼓起來；吐氣的時候，慢慢扁下去。',
+    '如果想到別的事情，沒關係，再回來感覺手指就好。',
+    '每一次呼吸，都在幫自己的心充一點電。',
+    '你今天已經很努力了，這幾分鐘，只要陪著自己。',
+    '聽聽身邊的聲音，讓身體慢慢放鬆。',
+    '快充飽了，再陪自己慢慢呼吸幾次。',
+  ],
+  end: '充電完成！謝謝你用這幾分鐘好好陪自己。心動力滿滿，我們今天也慢慢來。',
+  safety: '這是放鬆的小練習，不是醫療，也不能治療任何疾病。手指或手腕痠痛時，隨時放開休息。',
+};
 
 // 引導步驟：text 會顯示並朗讀，sec 是這一步停留的秒數
 export const HEAL_HAND = {
